@@ -175,9 +175,9 @@ export const RoleSwitcherModal: React.FC<RoleSwitcherModalProps> = ({
               </h3>
               <p className="text-xs text-amber-300 font-medium mt-0.5">Куратор / Мастер лаборатории</p>
               <ul className="text-[11px] text-zinc-400 mt-2.5 space-y-1 list-disc list-inside">
-                <li>Полный контроль всех 7 съёмочных групп</li>
+                <li>Полный контроль всех съёмочных групп</li>
                 <li>Перемещение участников и балансировка</li>
-                <li>Управление задачами и медиатекой</li>
+                <li>Управление книжной полкой и памятками</li>
                 <li>Журнал аудита действий (лог)</li>
               </ul>
             </div>

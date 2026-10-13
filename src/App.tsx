@@ -7,10 +7,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { User } from 'firebase/auth';
 import {
   Film,
-  CheckSquare,
   RefreshCw,
   Sparkles,
-  FolderOpen,
   BookOpen,
   KeyRound,
 } from 'lucide-react';
@@ -54,19 +52,15 @@ import { getAuditLogs, logAuditAction, clearAuditLogs } from './services/auditLo
 import { Header } from './components/Header';
 import { ConflictAlertBanner } from './components/ConflictAlertBanner';
 import { GroupBoard } from './components/GroupBoard';
-import { TasksDashboard } from './components/TasksDashboard';
 import { MemberCabinet } from './components/MemberCabinet';
-import { MediaLibrary } from './components/MediaLibrary';
 import { RoleGuidelinesView } from './components/RoleGuidelinesView';
 import { ParticipantPinsView } from './components/ParticipantPinsView';
 import { ConflictModal } from './components/ConflictModal';
 import { WorkspaceModal } from './components/WorkspaceModal';
 import { AddGroupModal } from './components/AddGroupModal';
 import { AddParticipantModal } from './components/AddParticipantModal';
-import { AddTaskModal } from './components/AddTaskModal';
 import { EditGroupModal } from './components/EditGroupModal';
 import { EditParticipantModal } from './components/EditParticipantModal';
-import { EditTaskModal } from './components/EditTaskModal';
 import { VkDispatchModal } from './components/VkDispatchModal';
 import { DeviceSyncModal } from './components/DeviceSyncModal';
 import { RoleSwitcherModal } from './components/RoleSwitcherModal';
@@ -168,7 +162,7 @@ export default function App() {
 
   // UI state
   const [currentView, setCurrentView] = useState<'moderator' | 'member' | 'guidelines'>('moderator');
-  const [moderatorTab, setModeratorTab] = useState<'teams' | 'tasks' | 'materials' | 'guidelines' | 'pins'>('teams');
+  const [moderatorTab, setModeratorTab] = useState<'teams' | 'guidelines' | 'pins'>('teams');
   const [activeGuidelineRole, setActiveGuidelineRole] = useState<RoleType>('director');
   const [selectedMember, setSelectedMember] = useState<Participant>(() => INITIAL_PARTICIPANTS[0]);
 
@@ -178,7 +172,7 @@ export default function App() {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [dispatchingGroup, setDispatchingGroup] = useState<FilmGroup | null>(null);
   const [dispatchInitialTab, setDispatchInitialTab] = useState<
-    'call_sheet' | 'announcement' | 'tasks' | 'chat_setup'
+    'call_sheet' | 'announcement' | 'chat_setup'
   >('call_sheet');
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
 
@@ -837,30 +831,6 @@ export default function App() {
                 </button>
 
                 <button
-                  onClick={() => setModeratorTab('tasks')}
-                  className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-sm font-semibold whitespace-nowrap transition-colors ${
-                    moderatorTab === 'tasks'
-                      ? 'bg-zinc-800 text-white shadow-sm'
-                      : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
-                  }`}
-                >
-                  <CheckSquare className="w-4 h-4" />
-                  <span>Управление задачами ({tasks.length})</span>
-                </button>
-
-                <button
-                  onClick={() => setModeratorTab('materials')}
-                  className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-sm font-semibold whitespace-nowrap transition-colors ${
-                    moderatorTab === 'materials'
-                      ? 'bg-zinc-800 text-white shadow-sm'
-                      : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
-                  }`}
-                >
-                  <FolderOpen className="w-4 h-4" />
-                  <span>Медиатека и материалы ({materials.length})</span>
-                </button>
-
-                <button
                   onClick={() => setModeratorTab('guidelines')}
                   className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-sm font-semibold whitespace-nowrap transition-colors ${
                     moderatorTab === 'guidelines'
@@ -907,7 +877,6 @@ export default function App() {
               <GroupBoard
                 groups={groups}
                 participants={participants}
-                tasks={tasks}
                 conflicts={conflicts}
                 isAdmin={userRole === 'admin'}
                 onMoveParticipant={handleMoveParticipant}
@@ -917,7 +886,6 @@ export default function App() {
                 onEditGroup={(g) => setEditingGroup(g)}
                 onEditParticipant={(p) => setEditingParticipant(p)}
                 onDeleteGroup={handleDeleteGroup}
-                onUpdateGroupStage={handleUpdateGroupStage}
                 onSelectMemberForCabinet={(m) => {
                   if (userRole === 'admin') {
                     setSelectedMember(m);
@@ -936,37 +904,6 @@ export default function App() {
                   else setDispatchInitialTab('call_sheet');
                 }}
                 onRemoveAvoidLink={handleRemoveAvoidLink}
-              />
-            ) : moderatorTab === 'tasks' ? (
-              <TasksDashboard
-                tasks={tasks}
-                groups={groups}
-                participants={participants}
-                isAdmin={userRole === 'admin'}
-                onUpdateTaskStatus={handleUpdateTaskStatus}
-                onOpenNewTaskModal={() => setIsAddTaskModalOpen(true)}
-                onEditTask={(t) => setEditingTask(t)}
-                onSelectMemberForCabinet={(m) => {
-                  if (userRole === 'admin') {
-                    setSelectedMember(m);
-                    setCurrentView('member');
-                  } else {
-                    if (m.id === selectedMember.id) {
-                      setCurrentView('member');
-                    } else {
-                      showToast(`Участник: ${m.name} (${ROLES[m.role]?.title || m.role}). Личный кабинет защищён PIN-кодом.`);
-                    }
-                  }
-                }}
-              />
-            ) : moderatorTab === 'materials' ? (
-              <MediaLibrary
-                materials={materials}
-                groups={groups}
-                isAdmin={userRole === 'admin'}
-                currentParticipant={userRole === 'participant' ? selectedMember : null}
-                onAddMaterial={handleAddMaterial}
-                onDeleteMaterial={handleDeleteMaterial}
               />
             ) : moderatorTab === 'guidelines' ? (
               <RoleGuidelinesView
@@ -1003,14 +940,10 @@ export default function App() {
             }
             allParticipants={participants}
             groups={groups}
-            tasks={tasks}
             onSelectMember={setSelectedMember}
             onEditParticipant={(p) => setEditingParticipant(p)}
             onUpdateMemberVk={handleUpdateMemberVk}
             onUpdateMemberPreferences={handleUpdateMemberPreferences}
-            onUpdateTaskStatus={handleUpdateTaskStatus}
-            onUpdateTaskDeliverable={handleUpdateTaskDeliverable}
-            onAddTask={(task) => handleAddTask({ ...task, id: `tsk-${Date.now()}` })}
             onRemoveAvoidLink={handleRemoveAvoidLink}
             onOpenRoleGuidelines={(role) => {
               setActiveGuidelineRole(role);
@@ -1076,16 +1009,6 @@ export default function App() {
         />
       )}
 
-      {isAddTaskModalOpen && (
-        <AddTaskModal
-          isOpen={true}
-          onClose={() => setIsAddTaskModalOpen(false)}
-          groups={groups}
-          participants={participants}
-          onAddTask={handleAddTask}
-        />
-      )}
-
       {/* Dedicated Edit Modals */}
       {editingGroup && (
         <EditGroupModal
@@ -1112,18 +1035,6 @@ export default function App() {
         />
       )}
 
-      {editingTask && (
-        <EditTaskModal
-          isOpen={true}
-          onClose={() => setEditingTask(null)}
-          task={editingTask}
-          groups={groups}
-          participants={participants}
-          onSaveTask={handleSaveTask}
-          onDeleteTask={handleDeleteTask}
-        />
-      )}
-
       {/* VK Dispatch & Chat Manager Modal */}
       {dispatchingGroup && (
         <VkDispatchModal
@@ -1131,7 +1042,6 @@ export default function App() {
           onClose={() => setDispatchingGroup(null)}
           group={dispatchingGroup}
           participants={participants}
-          tasks={tasks}
           initialTab={dispatchInitialTab}
           onSaveGroupChatUrl={(groupId, url) => {
             setGroups((prev) =>

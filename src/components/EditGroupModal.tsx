@@ -23,10 +23,6 @@ export const EditGroupModal: React.FC<EditGroupModalProps> = ({
   onMoveParticipant,
 }) => {
   const [name, setName] = useState(group?.name || '');
-  const [projectTitle, setProjectTitle] = useState(group?.projectTitle || '');
-  const [genre, setGenre] = useState(group?.genre || '');
-  const [stage, setStage] = useState<ProductionStage>(group?.stage || 'development');
-  const [logline, setLogline] = useState(group?.logline || '');
   const [vkChatUrl, setVkChatUrl] = useState(group?.vkChatUrl || '');
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const [copiedVkIds, setCopiedVkIds] = useState(false);
@@ -34,10 +30,6 @@ export const EditGroupModal: React.FC<EditGroupModalProps> = ({
   useEffect(() => {
     if (group) {
       setName(group.name);
-      setProjectTitle(group.projectTitle);
-      setGenre(group.genre);
-      setStage(group.stage);
-      setLogline(group.logline);
       setVkChatUrl(group.vkChatUrl || '');
     }
   }, [group]);
@@ -52,10 +44,6 @@ export const EditGroupModal: React.FC<EditGroupModalProps> = ({
     onSaveGroup({
       ...group,
       name: name.trim() || group.name,
-      projectTitle: projectTitle.trim() || group.projectTitle,
-      genre: genre.trim() || group.genre,
-      stage,
-      logline: logline.trim() || group.logline,
       vkChatUrl: vkChatUrl.trim() || undefined,
     });
     onClose();
@@ -75,7 +63,7 @@ export const EditGroupModal: React.FC<EditGroupModalProps> = ({
                 Редактирование: {group.name}
               </h3>
               <p className="text-xs text-zinc-400">
-                Изменение названия группы, кинопроекта, логлайна и состава
+                Изменение названия группы, ссылки на VK и состава участников
               </p>
             </div>
           </div>
@@ -90,74 +78,16 @@ export const EditGroupModal: React.FC<EditGroupModalProps> = ({
         {/* Body */}
         <form onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto flex-1">
           {/* Main Info */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-zinc-300 mb-1.5">
-                Название съёмочной группы:
-              </label>
-              <input
-                type="text"
-                required
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-zinc-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-zinc-300 mb-1.5">
-                Рабочее название проекта:
-              </label>
-              <input
-                type="text"
-                required
-                value={projectTitle}
-                onChange={(e) => setProjectTitle(e.target.value)}
-                className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-zinc-500"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-zinc-300 mb-1.5">
-                Жанр картины:
-              </label>
-              <input
-                type="text"
-                value={genre}
-                onChange={(e) => setGenre(e.target.value)}
-                className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-zinc-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-zinc-300 mb-1.5">
-                Этап производства:
-              </label>
-              <select
-                value={stage}
-                onChange={(e) => setStage(e.target.value as ProductionStage)}
-                className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-zinc-500"
-              >
-                <option value="development">Девелопмент</option>
-                <option value="pre_production">Пре-продакшн</option>
-                <option value="production">Съёмочный период</option>
-                <option value="post_production">Пост-продакшн</option>
-              </select>
-            </div>
-          </div>
-
           <div>
             <label className="block text-xs font-semibold text-zinc-300 mb-1.5">
-              Логлайн фильма:
+              Название съёмочной группы:
             </label>
-            <textarea
-              rows={3}
-              value={logline}
-              onChange={(e) => setLogline(e.target.value)}
-              placeholder="Краткое описание драматургии и завязки истории..."
-              className="w-full bg-zinc-950 border border-zinc-700 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-zinc-500 leading-relaxed"
+            <input
+              type="text"
+              required
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-zinc-500"
             />
           </div>
 

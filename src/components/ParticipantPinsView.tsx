@@ -113,7 +113,7 @@ export const ParticipantPinsView: React.FC<ParticipantPinsViewProps> = ({
     const portalUrl = `${currentUrl}?member=${participant.id}`;
     const roleTitle = ROLES[participant.role]?.title || participant.role;
     const group = groups.find((g) => g.id === participant.groupId);
-    const groupTitle = group ? `Группа №${group.number} («${group.projectTitle}»)` : 'Резерв цеха';
+    const groupTitle = group ? group.name : 'Резерв цеха';
 
     const message = `🎬 Привет, ${participant.name}!\n\nТвоя роль в Кинолаборатории: ${roleTitle}\nСъёмочная группа: ${groupTitle}\n\n🔑 Твой персональный 4-значный PIN-код для входа в личный кабинет: ${pin}\n\nСсылка на личный кабинет:\n${portalUrl}\n\n(В кабинете можно смотреть съёмочный план, памятки цеха, прикреплять материалы и при необходимости сменить свой PIN).`;
 
@@ -170,7 +170,7 @@ export const ParticipantPinsView: React.FC<ParticipantPinsViewProps> = ({
     groups.forEach((g) => {
       const gMembers = participants.filter((p) => p.groupId === g.id);
       if (gMembers.length > 0) {
-        lines.push(`--- ГРУППА ${g.number}: ${g.projectTitle} (${g.name}) ---`);
+        lines.push(`--- ${g.name} ---`);
         gMembers.forEach((p) => {
           const roleTitle = ROLES[p.role]?.shortTitle || p.role;
           lines.push(`• [${p.id}] ${p.name.padEnd(28)} | ${roleTitle.padEnd(16)} | PIN: ${p.pinCode || '----'} | VK: vk.com/${p.vkId}`);

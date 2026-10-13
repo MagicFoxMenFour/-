@@ -26,8 +26,7 @@ interface VkDispatchModalProps {
   onClose: () => void;
   group: FilmGroup | null;
   participants: Participant[];
-  tasks: Task[];
-  initialTab?: 'call_sheet' | 'announcement' | 'tasks' | 'chat_setup';
+  initialTab?: 'call_sheet' | 'announcement' | 'chat_setup';
   onSaveGroupChatUrl: (groupId: string, url: string) => void;
 }
 
@@ -36,11 +35,10 @@ export const VkDispatchModal: React.FC<VkDispatchModalProps> = ({
   onClose,
   group,
   participants,
-  tasks,
   initialTab = 'call_sheet',
   onSaveGroupChatUrl,
 }) => {
-  const [dispatchType, setDispatchType] = useState<'call_sheet' | 'announcement' | 'tasks' | 'chat_setup'>(
+  const [dispatchType, setDispatchType] = useState<'call_sheet' | 'announcement' | 'chat_setup'>(
     initialTab
   );
   const [copied, setCopied] = useState(false);
@@ -75,7 +73,6 @@ export const VkDispatchModal: React.FC<VkDispatchModalProps> = ({
   if (!isOpen || !group) return null;
 
   const groupMembers = participants.filter((p) => p.groupId === group.id);
-  const groupTasks = tasks.filter((t) => t.groupId === group.id && t.status !== 'done');
 
   // Handle preset shifts
   const applyPreset = (preset: 'interior' | 'exterior' | 'night' | 'pickup') => {
@@ -139,7 +136,6 @@ export const VkDispatchModal: React.FC<VkDispatchModalProps> = ({
   const generateCallSheetText = () => {
     const lines = [
       `🎬 ВЫЗЫВНОЙ ЛИСТ | ${group.name.toUpperCase()}`,
-      `Проект: «${group.projectTitle}» (${group.genre})`,
       `📅 Дата: ${shiftDate} (${shiftNumber})`,
       `📍 Локация: ${location}`,
       ``,
@@ -167,7 +163,6 @@ export const VkDispatchModal: React.FC<VkDispatchModalProps> = ({
   const generateAnnouncementText = () => {
     const lines = [
       `📢 КУРАТОРСКОЕ УВЕДОМЛЕНИЕ | ${group.name.toUpperCase()}`,
-      `Проект: «${group.projectTitle}»`,
       ``,
       `📌 ${announcementTitle}:`,
       `${announcementBody}`,
@@ -180,33 +175,11 @@ export const VkDispatchModal: React.FC<VkDispatchModalProps> = ({
     return lines.join('\n');
   };
 
-  // Generate Tasks Message
-  const generateTasksText = () => {
-    const lines = [
-      `⚡ СВОДКА ЗАДАЧ И ДЕДЛАЙНОВ | ${group.name.toUpperCase()}`,
-      `Проект: «${group.projectTitle}» (Этап: ${group.stage})`,
-      ``,
-      `Текущие открытые задачи съёмочной группы:`,
-      ...groupTasks.map((t, idx) => {
-        const assignee = groupMembers.find((m) => m.id === t.assignedToId);
-        const mention = assignee ? `@${assignee.vkId} (${assignee.name})` : 'Ответственный цех';
-        const statusLabel = t.status === 'in_progress' ? 'В РАБОТЕ' : 'К ВЫПОЛНЕНИЮ';
-        return `${idx + 1}. [${statusLabel}] ${t.title}\n   Ответственный: ${mention} | Дедлайн: ${t.deadline}`;
-      }),
-      ``,
-      `Просьба прикрепить готовые материалы и ссылки в личных кабинетах Кинолаборатории!`,
-      `— Куратор Кинолаборатории`,
-    ];
-    return lines.join('\n');
-  };
-
   const currentMessageText =
     dispatchType === 'call_sheet'
       ? generateCallSheetText()
       : dispatchType === 'announcement'
       ? generateAnnouncementText()
-      : dispatchType === 'tasks'
-      ? generateTasksText()
       : '';
 
   const handleCopy = () => {
@@ -253,9 +226,6 @@ export const VkDispatchModal: React.FC<VkDispatchModalProps> = ({
                 <h3 className="text-base font-bold text-white">
                   ВКонтакте (VK): {group.name}
                 </h3>
-                <span className="text-xs px-2 py-0.5 rounded bg-zinc-800 text-zinc-300 border border-zinc-700">
-                  «{group.projectTitle}»
-                </span>
               </div>
               <p className="text-xs text-zinc-400 mt-0.5">
                 Генерация вызывных листов, оповещений и управление общей беседой группы
@@ -354,18 +324,6 @@ export const VkDispatchModal: React.FC<VkDispatchModalProps> = ({
           >
             <Bell className="w-3.5 h-3.5" />
             <span>Оповещение / Объявление</span>
-          </button>
-
-          <button
-            onClick={() => setDispatchType('tasks')}
-            className={`flex items-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-t-lg transition-colors border-b-2 whitespace-nowrap ${
-              dispatchType === 'tasks'
-                ? 'border-white text-white bg-zinc-900'
-                : 'border-transparent text-zinc-400 hover:text-zinc-200'
-            }`}
-          >
-            <FileText className="w-3.5 h-3.5" />
-            <span>Сводка по задачам ({groupTasks.length})</span>
           </button>
 
           <button
@@ -796,37 +754,6 @@ export const VkDispatchModal: React.FC<VkDispatchModalProps> = ({
                     />
                   </div>
                 </>
-              )}
-
-              {dispatchType === 'tasks' && (
-                <div className="space-y-3">
-                  <div className="text-xs text-zinc-400">
-                    В сводку автоматически включены все незавершенные задачи группы ({groupTasks.length} шт.) с персональными тегами участников.
-                  </div>
-                  <div className="space-y-2 max-h-72 overflow-y-auto p-2 bg-zinc-950 rounded-xl border border-zinc-800">
-                    {groupTasks.length === 0 ? (
-                      <div className="p-4 text-center text-xs text-zinc-500">
-                        Все задачи выполнены! Отличная работа команды.
-                      </div>
-                    ) : (
-                      groupTasks.map((t) => {
-                        const assignee = groupMembers.find((m) => m.id === t.assignedToId);
-                        return (
-                          <div key={t.id} className="text-xs p-2.5 bg-zinc-900 rounded-lg border border-zinc-800 space-y-1">
-                            <div className="flex items-center justify-between">
-                              <span className="font-semibold text-white">{t.title}</span>
-                              <span className="text-[11px] text-amber-400 font-mono">{t.deadline}</span>
-                            </div>
-                            <div className="flex items-center justify-between text-[11px] text-zinc-400">
-                              <span>Цех: {ROLES[t.role]?.shortTitle || t.role}</span>
-                              <span className="font-mono text-zinc-300">@{assignee?.vkId || 'цех'}</span>
-                            </div>
-                          </div>
-                        );
-                      })
-                    )}
-                  </div>
-                </div>
               )}
 
               {/* Direct links to message individual members */}

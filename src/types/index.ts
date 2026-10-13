@@ -25,9 +25,15 @@ export interface RoleDeliverable {
 }
 
 export interface RoleBookRecommendation {
+  id?: string;
   title: string;
   author: string;
   whyRead: string;
+  fileUrl?: string; // Прямая ссылка на скачивание или облачный диск (PDF / EPUB / DOC)
+  fileName?: string; // Имя прикрепленного файла (например, 'kinorezhissura.pdf')
+  fileSize?: string; // Читаемый размер файла (например, '14.2 МБ')
+  fileData?: string; // Data URL содержимого файла (для мгновенного скачивания)
+  fileType?: string; // MIME тип (например, 'application/pdf')
 }
 
 export interface StudentProjectFocus {

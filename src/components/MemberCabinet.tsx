@@ -7,7 +7,6 @@ import {
   Film,
   BookOpen,
   Edit3,
-  FileCheck,
   Check,
   Edit2,
   Copy,
@@ -36,13 +35,16 @@ import {
   Eye,
   EyeOff,
   X,
+  Plus,
+  RotateCcw,
+  Trash2,
+  Download,
 } from 'lucide-react';
 import {
   FilmGroup,
   Participant,
+  RoleBookRecommendation,
   RoleType,
-  Task,
-  TaskStatus,
   UserRole,
 } from '../types';
 import { ROLES } from '../data/roles';
@@ -53,12 +55,21 @@ import {
   setParticipantPin,
   generateRandomPin,
 } from '../services/accessControl';
+import {
+  getBooksForRole,
+  addBookToRole,
+  updateBookInRole,
+  deleteBookFromRole,
+  resetBooksForRole,
+  subscribeToRoleBooks,
+} from '../services/booksService';
+import { triggerBookDownload } from '../services/bookStorage';
+import { EditBookModal } from './EditBookModal';
 
 interface MemberCabinetProps {
   currentMember: Participant;
   allParticipants: Participant[];
   groups: FilmGroup[];
-  tasks: Task[];
   userRole?: UserRole;
   onSelectMember: (member: Participant) => void;
   onEditParticipant: (participant: Participant) => void;
@@ -69,9 +80,6 @@ interface MemberCabinetProps {
     avoidedWithIds: string[],
     desiredRoles?: RoleType[]
   ) => void;
-  onUpdateTaskStatus: (taskId: string, status: TaskStatus) => void;
-  onUpdateTaskDeliverable: (taskId: string, deliverableUrl: string, notes: string) => void;
-  onAddTask: (task: Omit<Task, 'id'>) => void;
   onRemoveAvoidLink?: (p1Id: string, p2Id: string) => void;
   onOpenRoleGuidelines?: (role: RoleType) => void;
   onUpdateParticipantPin?: (participantId: string, newPin: string) => void;
@@ -81,24 +89,17 @@ export const MemberCabinet: React.FC<MemberCabinetProps> = ({
   currentMember,
   allParticipants,
   groups,
-  tasks,
   userRole = 'participant',
   onSelectMember,
   onEditParticipant,
   onUpdateMemberVk,
   onUpdateMemberPreferences,
-  onUpdateTaskStatus,
-  onUpdateTaskDeliverable,
-  onAddTask,
   onRemoveAvoidLink,
   onOpenRoleGuidelines,
   onUpdateParticipantPin,
 }) => {
   const [isEditingVk, setIsEditingVk] = useState(false);
   const [tempVkId, setTempVkId] = useState(currentMember.vkId);
-  const [deliverableModalTaskId, setDeliverableModalTaskId] = useState<string | null>(null);
-  const [deliverableUrlInput, setDeliverableUrlInput] = useState('');
-  const [deliverableNotesInput, setDeliverableNotesInput] = useState('');
   const [selectedPartnerIds, setSelectedPartnerIds] = useState<string[]>(
     currentMember.preferredWithIds || []
   );
@@ -187,9 +188,25 @@ export const MemberCabinet: React.FC<MemberCabinetProps> = ({
 
   // Role Guideline State
   const [viewedRoleType, setViewedRoleType] = useState<RoleType>(currentMember.role);
-  const [guidelineTab, setGuidelineTab] = useState<'focus' | 'stages' | 'books' | 'deliverables' | 'checklist' | 'collaborations'>('focus');
+  const [guidelineTab, setGuidelineTab] = useState<'focus' | 'stages' | 'books' | 'deliverables' | 'checklist'>('focus');
   const [checkedChecklist, setCheckedChecklist] = useState<Record<string, boolean>>({});
   const [copiedGuideline, setCopiedGuideline] = useState(false);
+
+  // Bookshelf live data and editing
+  const [cabinetRoleBooks, setCabinetRoleBooks] = useState<RoleBookRecommendation[]>(() =>
+    getBooksForRole(viewedRoleType)
+  );
+  const [isCabinetBookModalOpen, setIsCabinetBookModalOpen] = useState(false);
+  const [editingCabinetBook, setEditingCabinetBook] = useState<RoleBookRecommendation | null>(null);
+  const [editingCabinetBookIndex, setEditingCabinetBookIndex] = useState<number | null>(null);
+
+  useEffect(() => {
+    setCabinetRoleBooks(getBooksForRole(viewedRoleType));
+    const unsub = subscribeToRoleBooks(() => {
+      setCabinetRoleBooks(getBooksForRole(viewedRoleType));
+    });
+    return unsub;
+  }, [viewedRoleType]);
 
   // Sync viewed role with current member role when member changes
   useEffect(() => {
@@ -212,17 +229,6 @@ export const MemberCabinet: React.FC<MemberCabinetProps> = ({
   const crewMembers = myGroup
     ? allParticipants.filter((p) => p.groupId === myGroup.id && p.id !== currentMember.id)
     : [];
-
-  const myTasks = tasks.filter(
-    (t) =>
-      t.assignedToId === currentMember.id ||
-      (Boolean(currentMember.groupId) && t.groupId === currentMember.groupId)
-  );
-  const completedTasks = myTasks.filter((t) => t.status === 'done');
-  const taskProgressPercent =
-    myTasks.length > 0
-      ? Math.round((completedTasks.length / myTasks.length) * 100)
-      : 0;
 
   // Save VK updates
   const handleSaveVk = () => {
@@ -283,15 +289,6 @@ export const MemberCabinet: React.FC<MemberCabinetProps> = ({
     setAvoidedPartnerIds(updatedAvoided);
     setSelectedPartnerIds(updatedPreferred);
     onUpdateMemberPreferences(currentMember.id, updatedPreferred, updatedAvoided, desiredRoles);
-  };
-
-  // Submit deliverable
-  const handleSubmitDeliverable = (taskId: string) => {
-    onUpdateTaskDeliverable(taskId, deliverableUrlInput, deliverableNotesInput);
-    onUpdateTaskStatus(taskId, 'review');
-    setDeliverableModalTaskId(null);
-    setDeliverableUrlInput('');
-    setDeliverableNotesInput('');
   };
 
   // Toggle checklist item
@@ -363,10 +360,6 @@ export const MemberCabinet: React.FC<MemberCabinetProps> = ({
       lines.push(`✅ ЧЕК-ЛИСТ СЪЁМОЧНОЙ СМЕНЫ:`);
       activeRoleDef.shiftChecklist.forEach((chk) => lines.push(`[ ] ${chk}`));
       lines.push(``);
-    }
-
-    if (activeRoleDef.collaboratesWith && activeRoleDef.collaboratesWith.length > 0) {
-      lines.push(`🤝 СМЕЖНЫЕ ЦЕХА ВЗАИМОДЕЙСТВИЯ: ${activeRoleDef.collaboratesWith.join(', ')}`);
     }
 
     navigator.clipboard.writeText(lines.join('\n'));
@@ -661,7 +654,7 @@ export const MemberCabinet: React.FC<MemberCabinetProps> = ({
               <div className="flex items-center justify-between text-xs text-zinc-400 pt-1 border-t border-zinc-900">
                 <span>Команда:</span>
                 <b className="text-zinc-200">
-                  {myGroup ? `${myGroup.name} («${myGroup.projectTitle}»)` : 'Резерв лаборатории'}
+                  {myGroup ? myGroup.name : 'Резерв лаборатории'}
                 </b>
               </div>
 
@@ -763,7 +756,7 @@ export const MemberCabinet: React.FC<MemberCabinetProps> = ({
           </div>
         </div>
 
-        {/* Right: Film Crew, Tasks & Preferences */}
+        {/* Right: Film Crew & Preferences */}
         <div className="lg:col-span-8 xl:col-span-8 2xl:col-span-8 space-y-5">
           {/* Film Crew Card */}
           <div className="bg-zinc-900 border border-zinc-800 p-5 rounded-xl">
@@ -787,20 +780,6 @@ export const MemberCabinet: React.FC<MemberCabinetProps> = ({
 
             {myGroup ? (
               <div className="space-y-4">
-                <div className="bg-zinc-950 p-4 rounded-xl border border-zinc-800 space-y-1">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-bold text-white">
-                      «{myGroup.projectTitle}»
-                    </span>
-                    <span className="text-xs text-zinc-400">
-                      {myGroup.genre}
-                    </span>
-                  </div>
-                  <p className="text-xs text-zinc-400 leading-relaxed italic">
-                    "{myGroup.logline}"
-                  </p>
-                </div>
-
                 {/* VK Group Chat Button */}
                 {myGroup.vkChatUrl ? (
                   <a
@@ -874,105 +853,6 @@ export const MemberCabinet: React.FC<MemberCabinetProps> = ({
             ) : (
               <div className="p-6 text-center bg-zinc-950 rounded-xl border border-zinc-800 text-xs text-zinc-400">
                 Вы находитесь в резерве. Куратор распределит вас в группу после собрания.
-              </div>
-            )}
-          </div>
-
-          {/* Tasks */}
-          <div className="bg-zinc-900 border border-zinc-800 p-5 rounded-xl space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h4 className="text-base font-bold text-white flex items-center gap-2">
-                  <FileCheck className="w-4 h-4 text-zinc-400" />
-                  <span>Мои производственные задачи ({myTasks.length})</span>
-                </h4>
-                <p className="text-xs text-zinc-400">
-                  Выполнено {completedTasks.length} из {myTasks.length} ({taskProgressPercent}%)
-                </p>
-              </div>
-            </div>
-
-            {myTasks.length === 0 ? (
-              <div className="p-6 text-center text-zinc-500 bg-zinc-950 rounded-xl border border-zinc-800 text-xs">
-                Задач пока нет.
-              </div>
-            ) : (
-              <div className="space-y-2.5">
-                {myTasks.map((task) => (
-                  <div
-                    key={task.id}
-                    className="p-3.5 sm:p-4 rounded-xl bg-zinc-950 border border-zinc-800 space-y-3 w-full min-w-0"
-                  >
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-                      <div className="flex items-center gap-2 flex-wrap min-w-0">
-                        <span className="text-sm font-semibold text-white">
-                          {task.title}
-                        </span>
-                        <span className="text-[11px] font-medium px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20 shrink-0">
-                          Задача съёмочной группы
-                        </span>
-                      </div>
-
-                      <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
-                        <span className="text-[11px] text-zinc-400 sm:hidden">Статус:</span>
-                        <select
-                          value={task.status}
-                          onChange={(e) =>
-                            onUpdateTaskStatus(task.id, e.target.value as TaskStatus)
-                          }
-                          className="bg-zinc-900 border border-zinc-700 text-xs text-zinc-200 rounded-lg px-2.5 py-1.5 focus:outline-none shrink-0 font-medium"
-                        >
-                          <option value="todo">К выполнению</option>
-                          <option value="in_progress">В процессе</option>
-                          <option value="review">На проверку</option>
-                          <option value="done">Выполнено</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    {task.description && (
-                      <div className="text-xs text-zinc-300 whitespace-pre-line leading-relaxed bg-zinc-900/60 p-3.5 rounded-xl border border-zinc-850 w-full min-w-0">
-                        {task.description}
-                      </div>
-                    )}
-
-                    <div className="flex items-center justify-between pt-1 text-xs text-zinc-400">
-                      <span className="flex items-center gap-1 text-zinc-500">
-                        <Clock className="w-3 h-3" />
-                        <span>Дедлайн: {task.deadline}</span>
-                      </span>
-
-                      <button
-                        onClick={() => {
-                          setDeliverableModalTaskId(task.id);
-                          setDeliverableUrlInput(task.deliverableUrl || '');
-                          setDeliverableNotesInput(task.deliverableNotes || '');
-                        }}
-                        className="text-xs text-zinc-300 hover:text-white px-2 py-1 rounded bg-zinc-900 border border-zinc-800 flex items-center gap-1"
-                      >
-                        <LinkIcon className="w-3 h-3" />
-                        <span>Прикрепить материал</span>
-                      </button>
-                    </div>
-
-                    {task.deliverableUrl && (
-                      <div className="text-xs bg-zinc-900 p-2 rounded border border-zinc-800 flex items-center justify-between">
-                        <span className="text-zinc-400 truncate max-w-sm">
-                          {task.deliverableNotes || task.deliverableUrl}
-                        </span>
-                        <a
-                          href={task.deliverableUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-zinc-200 hover:underline font-semibold flex items-center gap-1"
-                        >
-                          <span>Открыть</span>
-                          <ExternalLink className="w-2.5 h-2.5" />
-                        </a>
-                      </div>
-                    )}
-                  </div>
-                ))}
               </div>
             )}
           </div>
@@ -1465,8 +1345,7 @@ export const MemberCabinet: React.FC<MemberCabinetProps> = ({
               {guidelineTab === 'focus' ? '1 из 6' :
                guidelineTab === 'stages' ? '2 из 6' :
                guidelineTab === 'books' ? '3 из 6' :
-               guidelineTab === 'deliverables' ? '4 из 6' :
-               guidelineTab === 'checklist' ? '5 из 6' : '6 из 6'}
+               guidelineTab === 'deliverables' ? '4 из 5' : '5 из 5'}
             </span>
           </div>
 
@@ -1477,14 +1356,13 @@ export const MemberCabinet: React.FC<MemberCabinetProps> = ({
           >
             <option value="focus">💡 1. Студенческий фокус (Важное / Неважное)</option>
             <option value="stages">📅 2. Обязанности по этапам (Пре / Съёмки / Пост)</option>
-            <option value="books">📚 3. Книжная полка цеха ({activeRoleDef.recommendedBooks?.length || 0})</option>
+            <option value="books">📚 3. Книжная полка цеха ({cabinetRoleBooks.length})</option>
             <option value="deliverables">📁 4. Сдаваемые материалы ({activeRoleDef.deliverables?.length || 0})</option>
             <option value="checklist">✅ 5. Чек-лист съёмочной смены</option>
-            <option value="collaborations">🤝 6. Взаимодействие с цехами</option>
           </select>
 
-          {/* 6 Quick Category Buttons Grid (100% visible on mobile, no cut-off) */}
-          <div className="grid grid-cols-3 gap-1.5 pt-0.5">
+          {/* 5 Quick Category Buttons Grid (100% visible on mobile, no cut-off) */}
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 pt-0.5">
             <button
               type="button"
               onClick={() => setGuidelineTab('focus')}
@@ -1532,24 +1410,13 @@ export const MemberCabinet: React.FC<MemberCabinetProps> = ({
             <button
               type="button"
               onClick={() => setGuidelineTab('checklist')}
-              className={`py-2 px-1.5 rounded-lg text-[11px] font-medium transition-colors text-center truncate ${
+              className={`py-2 px-1.5 rounded-lg text-[11px] font-medium transition-colors text-center truncate col-span-2 sm:col-span-1 ${
                 guidelineTab === 'checklist'
                   ? 'bg-emerald-950 text-emerald-300 border border-emerald-700 font-bold shadow-sm'
                   : 'bg-zinc-900 text-zinc-400 border border-zinc-800'
               }`}
             >
               ✅ Чек-лист
-            </button>
-            <button
-              type="button"
-              onClick={() => setGuidelineTab('collaborations')}
-              className={`py-2 px-1.5 rounded-lg text-[11px] font-medium transition-colors text-center truncate ${
-                guidelineTab === 'collaborations'
-                  ? 'bg-zinc-800 text-white border border-zinc-650 font-bold shadow-sm'
-                  : 'bg-zinc-900 text-zinc-400 border border-zinc-800'
-              }`}
-            >
-              🤝 Цеха
             </button>
           </div>
         </div>
@@ -1592,7 +1459,7 @@ export const MemberCabinet: React.FC<MemberCabinetProps> = ({
             }`}
           >
             <BookMarked className="w-3.5 h-3.5 text-indigo-400" />
-            <span>Книжная полка цеха ({activeRoleDef.recommendedBooks?.length || 0})</span>
+            <span>Книжная полка цеха ({cabinetRoleBooks.length})</span>
           </button>
 
           <button
@@ -1617,18 +1484,6 @@ export const MemberCabinet: React.FC<MemberCabinetProps> = ({
           >
             <CheckCircle2 className="w-3.5 h-3.5" />
             <span>Чек-лист готовности к съёмочной смене</span>
-          </button>
-
-          <button
-            onClick={() => setGuidelineTab('collaborations')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-t-lg transition-colors border-b-2 whitespace-nowrap ${
-              guidelineTab === 'collaborations'
-                ? 'border-white text-white bg-zinc-900 shadow-sm'
-                : 'border-transparent text-zinc-400 hover:text-zinc-200'
-            }`}
-          >
-            <Users2 className="w-3.5 h-3.5" />
-            <span>Смежные цеха взаимодействия</span>
           </button>
         </div>
 
@@ -1858,51 +1713,161 @@ export const MemberCabinet: React.FC<MemberCabinetProps> = ({
               </div>
 
               {/* Books Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {activeRoleDef.recommendedBooks && activeRoleDef.recommendedBooks.length > 0 ? (
-                  activeRoleDef.recommendedBooks.map((book, idx) => (
-                    <div
-                      key={idx}
-                      className="bg-zinc-950 border border-zinc-800 rounded-xl p-4 flex flex-col justify-between space-y-3 hover:border-indigo-700/60 transition-colors shadow-sm"
-                    >
-                      <div className="space-y-2.5">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-indigo-950 text-indigo-300 border border-indigo-800/80 uppercase tracking-wider">
-                            Книга #{idx + 1}
-                          </span>
-                          <span className="text-[11px] text-zinc-500 font-mono">
-                            Маст-хэв
-                          </span>
-                        </div>
+              <div className="space-y-4">
+                {userRole === 'admin' && (
+                  <div className="flex items-center justify-between pb-1">
+                    <span className="text-xs text-indigo-300 font-semibold">Управление книгами цеха:</span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => {
+                          if (confirm('Восстановить исходный список книг для этого цеха?')) {
+                            resetBooksForRole(viewedRoleType);
+                          }
+                        }}
+                        title="Сбросить список книг этого цеха к базовым"
+                        className="p-1.5 text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-800 transition-colors"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => {
+                          setEditingCabinetBook(null);
+                          setEditingCabinetBookIndex(null);
+                          setIsCabinetBookModalOpen(true);
+                        }}
+                        className="flex items-center gap-1.5 px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold transition-colors shadow-sm"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Добавить книгу</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
 
-                        <div>
-                          <h5 className="font-bold text-white text-sm leading-snug">
-                            «{book.title}»
-                          </h5>
-                          <div className="text-xs text-indigo-400 font-medium mt-0.5">
-                            {book.author}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {cabinetRoleBooks && cabinetRoleBooks.length > 0 ? (
+                    cabinetRoleBooks.map((book, idx) => (
+                      <div
+                        key={idx}
+                        className="bg-zinc-950 border border-zinc-800 rounded-xl p-4 flex flex-col justify-between space-y-3 hover:border-indigo-700/60 transition-colors shadow-sm relative group"
+                      >
+                        <div className="space-y-2.5">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-indigo-950 text-indigo-300 border border-indigo-800/80 uppercase tracking-wider">
+                              Книга #{idx + 1}
+                            </span>
+
+                            {userRole === 'admin' ? (
+                              <div className="flex items-center gap-1">
+                                <button
+                                  onClick={() => {
+                                    setEditingCabinetBook(book);
+                                    setEditingCabinetBookIndex(idx);
+                                    setIsCabinetBookModalOpen(true);
+                                  }}
+                                  title="Редактировать книгу"
+                                  className="p-1 text-zinc-400 hover:text-indigo-300 rounded hover:bg-zinc-900 transition-colors"
+                                >
+                                  <Edit2 className="w-3 h-3" />
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    if (confirm(`Удалить книгу «${book.title}»?`)) {
+                                      deleteBookFromRole(viewedRoleType, idx);
+                                    }
+                                  }}
+                                  title="Удалить книгу"
+                                  className="p-1 text-zinc-400 hover:text-rose-400 rounded hover:bg-zinc-900 transition-colors"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </button>
+                              </div>
+                            ) : (
+                              <span className="text-[11px] text-zinc-500 font-mono">
+                                Маст-хэв
+                              </span>
+                            )}
+                          </div>
+
+                          <div>
+                            <h5 className="font-bold text-white text-sm leading-snug">
+                              «{book.title}»
+                            </h5>
+                            <div className="text-xs text-indigo-400 font-medium mt-0.5">
+                              {book.author}
+                            </div>
+                          </div>
+
+                          <div className="p-3 rounded-lg bg-zinc-900/70 border border-zinc-850 text-xs text-zinc-300 leading-relaxed">
+                            <span className="font-semibold text-zinc-400 block mb-1">
+                              Почему стоит прочесть студенту:
+                            </span>
+                            {book.whyRead}
                           </div>
                         </div>
 
-                        <div className="p-3 rounded-lg bg-zinc-900/70 border border-zinc-850 text-xs text-zinc-300 leading-relaxed">
-                          <span className="font-semibold text-zinc-400 block mb-1">
-                            Почему стоит прочесть студенту:
-                          </span>
-                          {book.whyRead}
+                        {/* Download Book Document */}
+                        <div className="space-y-2 pt-2 border-t border-zinc-850">
+                          {book.fileName || book.fileData || book.fileUrl ? (
+                            <div className="space-y-1.5">
+                              <button
+                                type="button"
+                                onClick={() => triggerBookDownload(book)}
+                                className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-sm transition-colors"
+                              >
+                                <Download className="w-3.5 h-3.5" />
+                                <span className="truncate">Скачать книгу {book.fileName ? `(${book.fileName})` : '(.pdf)'}</span>
+                                {book.fileSize && (
+                                  <span className="px-1.5 py-0.5 rounded bg-indigo-700 text-indigo-200 text-[10px] font-mono font-normal shrink-0">
+                                    {book.fileSize}
+                                  </span>
+                                )}
+                              </button>
+
+                              {book.fileUrl && (
+                                <a
+                                  href={book.fileUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="w-full flex items-center justify-center gap-1.5 py-1 text-[11px] text-zinc-400 hover:text-zinc-200 transition-colors"
+                                >
+                                  <span>Открыть на облачном диске</span>
+                                  <ExternalLink className="w-3 h-3 text-zinc-500" />
+                                </a>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-between text-[11px] text-zinc-500">
+                              <span>Файл пока не прикреплен</span>
+                              {userRole === 'admin' && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEditingCabinetBook(book);
+                                    setEditingCabinetBookIndex(idx);
+                                    setIsCabinetBookModalOpen(true);
+                                  }}
+                                  className="text-indigo-400 hover:text-indigo-300 font-medium underline"
+                                >
+                                  + Загрузить PDF
+                                </button>
+                              )}
+                            </div>
+                          )}
+
+                          <div className="flex items-center justify-between text-[11px] text-zinc-500 pt-1 border-t border-zinc-850/60">
+                            <span>Рекомендовано кураторами</span>
+                            <span className="text-indigo-400 font-medium">Кинолаборатория</span>
+                          </div>
                         </div>
                       </div>
-
-                      <div className="pt-2 border-t border-zinc-850 flex items-center justify-between text-[11px] text-zinc-500">
-                        <span>Рекомендовано кураторами</span>
-                        <span className="text-indigo-400 font-medium">Кинолаборатория</span>
-                      </div>
+                    ))
+                  ) : (
+                    <div className="col-span-3 text-center text-xs text-zinc-500 p-6 bg-zinc-950 rounded-xl border border-zinc-800">
+                      Список рекомендуемой литературы пока пуст.
                     </div>
-                  ))
-                ) : (
-                  <div className="col-span-3 text-center text-xs text-zinc-500 p-6">
-                    Список рекомендуемой литературы формируется.
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             </div>
           )}
@@ -1937,7 +1902,7 @@ export const MemberCabinet: React.FC<MemberCabinetProps> = ({
                       </div>
 
                       <div className="pt-2 border-t border-zinc-850 flex items-center justify-between text-xs">
-                        <span className="text-zinc-500">Прикрепляется в разделе «Мои задачи»</span>
+                        <span className="text-zinc-500">Согласование с куратором</span>
                         <span className="text-blue-400 font-medium">Обязательно</span>
                       </div>
                     </div>
@@ -2003,114 +1968,32 @@ export const MemberCabinet: React.FC<MemberCabinetProps> = ({
             </div>
           )}
 
-          {/* Tab 4: Collaborations */}
-          {guidelineTab === 'collaborations' && (
-            <div className="space-y-4">
-              <div className="text-xs text-zinc-400">
-                В съёмочном процессе специалист роли «{activeRoleDef.title}» находится в постоянной связке со следующими цехами. Кликните на любой цех, чтобы изучить его встречные обязанности:
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                {activeRoleDef.collaboratesWith && activeRoleDef.collaboratesWith.length > 0 ? (
-                  activeRoleDef.collaboratesWith.map((partnerName, idx) => {
-                    // Try finding matching role
-                    const matchedRole = Object.values(ROLES).find(
-                      (r) => r.title.toLowerCase().includes(partnerName.toLowerCase()) || r.shortTitle.toLowerCase().includes(partnerName.toLowerCase())
-                    );
-
-                    return (
-                      <div
-                        key={idx}
-                        className="p-3.5 bg-zinc-950 rounded-xl border border-zinc-800 flex items-center justify-between text-xs"
-                      >
-                        <div>
-                          <div className="font-semibold text-white">{partnerName}</div>
-                          <div className="text-[11px] text-zinc-500 mt-0.5">
-                            {matchedRole ? matchedRole.description.slice(0, 48) + '...' : 'Смежный цех'}
-                          </div>
-                        </div>
-
-                        {matchedRole && (
-                          <button
-                            onClick={() => {
-                              setViewedRoleType(matchedRole.type);
-                              setGuidelineTab('stages');
-                            }}
-                            className="px-2 py-1 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 rounded text-xs text-zinc-300 hover:text-white transition-colors shrink-0 ml-2"
-                          >
-                            Изучить
-                          </button>
-                        )}
-                      </div>
-                    );
-                  })
-                ) : (
-                  <div className="p-4 text-center text-xs text-zinc-500 col-span-3">
-                    Список смежных цехов формируется.
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
         </div>
       </div>
 
-      {/* Deliverable Upload Modal */}
-      {deliverableModalTaskId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
-          <div className="bg-zinc-900 border border-zinc-700 w-full max-w-lg rounded-2xl p-6 shadow-2xl space-y-4">
-            <h4 className="text-base font-bold text-white flex items-center gap-2">
-              <LinkIcon className="w-5 h-5 text-zinc-200" />
-              <span>Прикрепить материал к задаче</span>
-            </h4>
-            <p className="text-xs text-zinc-400">
-              Вставьте ссылку на черновик сценария, мудборд, КПП, исходники или видеоматериал
-            </p>
-
-            <div className="space-y-3">
-              <div>
-                <label className="block text-xs font-medium text-zinc-300 mb-1">
-                  Ссылка на файл (Google Drive / Яндекс.Диск / Облако):
-                </label>
-                <input
-                  type="url"
-                  value={deliverableUrlInput}
-                  onChange={(e) => setDeliverableUrlInput(e.target.value)}
-                  placeholder="https://docs.google.com/... или https://disk.yandex.ru/..."
-                  className="w-full bg-zinc-950 border border-zinc-700 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-zinc-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-zinc-300 mb-1">
-                  Комментарий для куратора:
-                </label>
-                <textarea
-                  rows={2}
-                  value={deliverableNotesInput}
-                  onChange={(e) => setDeliverableNotesInput(e.target.value)}
-                  placeholder="Драфт №2, согласовано с оператором и режиссёром..."
-                  className="w-full bg-zinc-950 border border-zinc-700 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-zinc-500"
-                />
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-3 pt-2">
-              <button
-                onClick={() => setDeliverableModalTaskId(null)}
-                className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl text-xs font-semibold"
-              >
-                Отмена
-              </button>
-              <button
-                onClick={() => handleSubmitDeliverable(deliverableModalTaskId)}
-                className="px-5 py-2 bg-zinc-100 hover:bg-white text-zinc-950 rounded-xl text-xs font-bold shadow"
-              >
-                Сохранить
-              </button>
-            </div>
-          </div>
-        </div>
+      {/* Edit / Add Book Modal for Cabinet Bookshelf */}
+      {isCabinetBookModalOpen && (
+        <EditBookModal
+          isOpen={isCabinetBookModalOpen}
+          onClose={() => {
+            setIsCabinetBookModalOpen(false);
+            setEditingCabinetBook(null);
+            setEditingCabinetBookIndex(null);
+          }}
+          roleType={viewedRoleType}
+          book={editingCabinetBook}
+          bookIndex={editingCabinetBookIndex}
+          onSave={(bookData, idx) => {
+            if (idx !== null && idx !== undefined) {
+              updateBookInRole(viewedRoleType, idx, bookData);
+            } else {
+              addBookToRole(viewedRoleType, bookData);
+            }
+          }}
+          onDelete={(idx) => {
+            deleteBookFromRole(viewedRoleType, idx);
+          }}
+        />
       )}
 
       {/* Change PIN Modal */}

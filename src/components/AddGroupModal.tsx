@@ -16,25 +16,21 @@ export const AddGroupModal: React.FC<AddGroupModalProps> = ({
   onAddGroup,
 }) => {
   const [name, setName] = useState(`Группа ${nextNumber}`);
-  const [projectTitle, setProjectTitle] = useState('');
-  const [genre, setGenre] = useState('Короткометражная драма');
-  const [logline, setLogline] = useState('');
-  const [stage, setStage] = useState<ProductionStage>('development');
 
   if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !projectTitle.trim()) return;
+    if (!name.trim()) return;
 
     const newGroup: FilmGroup = {
       id: `grp-${Date.now()}`,
       number: nextNumber,
       name: name.trim(),
-      projectTitle: projectTitle.trim(),
-      genre: genre.trim(),
-      logline: logline.trim() || 'Логлайн в разработке.',
-      stage,
+      projectTitle: name.trim(),
+      genre: '',
+      logline: '',
+      stage: 'production',
       color: 'zinc',
     };
 
@@ -60,9 +56,9 @@ export const AddGroupModal: React.FC<AddGroupModalProps> = ({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-3.5">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-zinc-300 mb-1">
+            <label className="block text-xs font-semibold text-zinc-300 mb-1.5">
               Название съёмочной группы:
             </label>
             <input
@@ -70,66 +66,9 @@ export const AddGroupModal: React.FC<AddGroupModalProps> = ({
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Группа 8"
-              className="w-full bg-zinc-950 border border-zinc-700 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-zinc-500"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-zinc-300 mb-1">
-              Рабочее название фильма / проекта:
-            </label>
-            <input
-              type="text"
-              required
-              value={projectTitle}
-              onChange={(e) => setProjectTitle(e.target.value)}
-              placeholder="Например: Встреча на рассвете"
-              className="w-full bg-zinc-950 border border-zinc-700 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-zinc-500"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-semibold text-zinc-300 mb-1">
-                Жанр:
-              </label>
-              <input
-                type="text"
-                value={genre}
-                onChange={(e) => setGenre(e.target.value)}
-                placeholder="Триллер / Драма"
-                className="w-full bg-zinc-950 border border-zinc-700 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-zinc-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-zinc-300 mb-1">
-                Стартовый этап:
-              </label>
-              <select
-                value={stage}
-                onChange={(e) => setStage(e.target.value as ProductionStage)}
-                className="w-full bg-zinc-950 border border-zinc-700 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-zinc-500"
-              >
-                <option value="development">Девелопмент</option>
-                <option value="pre_production">Пре-продакшн</option>
-                <option value="production">Съёмочный период</option>
-                <option value="post_production">Пост-продакшн</option>
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-zinc-300 mb-1">
-              Логлайн:
-            </label>
-            <textarea
-              rows={2}
-              value={logline}
-              onChange={(e) => setLogline(e.target.value)}
-              placeholder="Краткое описание сюжета..."
-              className="w-full bg-zinc-950 border border-zinc-700 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-zinc-500"
+              placeholder="Например: Группа 8"
+              className="w-full bg-zinc-950 border border-zinc-700 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-zinc-500"
+              autoFocus
             />
           </div>
 

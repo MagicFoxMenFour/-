@@ -19,16 +19,13 @@ import {
   ConflictItem,
   FilmGroup,
   Participant,
-  ProductionStage,
   RoleType,
-  Task,
 } from '../types';
 import { ROLES } from '../data/roles';
 
 interface GroupBoardProps {
   groups: FilmGroup[];
   participants: Participant[];
-  tasks: Task[];
   conflicts: ConflictItem[];
   isAdmin?: boolean;
   onMoveParticipant: (participantId: string, newGroupId: string | null) => void;
@@ -38,11 +35,10 @@ interface GroupBoardProps {
   onEditGroup: (group: FilmGroup) => void;
   onEditParticipant: (participant: Participant) => void;
   onDeleteGroup: (groupId: string) => void;
-  onUpdateGroupStage: (groupId: string, stage: ProductionStage) => void;
   onSelectMemberForCabinet: (participant: Participant) => void;
   onOpenVkDispatch: (
     group: FilmGroup,
-    initialTab?: 'call_sheet' | 'announcement' | 'tasks' | 'chat_setup'
+    initialTab?: 'call_sheet' | 'announcement' | 'chat_setup'
   ) => void;
   onRemoveAvoidLink?: (p1Id: string, p2Id: string) => void;
 }
@@ -50,7 +46,6 @@ interface GroupBoardProps {
 export const GroupBoard: React.FC<GroupBoardProps> = ({
   groups,
   participants,
-  tasks,
   conflicts,
   isAdmin = true,
   onMoveParticipant,
@@ -60,7 +55,6 @@ export const GroupBoard: React.FC<GroupBoardProps> = ({
   onEditGroup,
   onEditParticipant,
   onDeleteGroup,
-  onUpdateGroupStage,
   onSelectMemberForCabinet,
   onOpenVkDispatch,
   onRemoveAvoidLink,
@@ -68,7 +62,6 @@ export const GroupBoard: React.FC<GroupBoardProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
-  const [expandedLoglineGroupId, setExpandedLoglineGroupId] = useState<string | null>(null);
 
   // Filter participants
   const filteredParticipants = participants.filter((p) => {
@@ -86,13 +79,6 @@ export const GroupBoard: React.FC<GroupBoardProps> = ({
   const benchParticipants = filteredParticipants.filter((p) => !p.groupId && p.role !== 'actor');
   const actorParticipants = participants.filter((p) => p.role === 'actor');
 
-  const stageLabels: Record<ProductionStage, string> = {
-    development: 'Девелопмент',
-    pre_production: 'Пре-продакшн',
-    production: 'Съёмки',
-    post_production: 'Пост-продакшн',
-  };
-
   return (
     <div className="space-y-6">
       {/* Participant Read-only Notice Banner */}
@@ -103,7 +89,7 @@ export const GroupBoard: React.FC<GroupBoardProps> = ({
             <div>
               <span className="font-bold text-white">Режим участника (Только чтение):</span>{' '}
               <span>
-                Вам доступен просмотр составов всех 7 съёмочных групп, контактов VK и логлайнов. Изменение составов и редактирование групп доступно только администраторам.
+                Вам доступен просмотр составов всех 7 съёмочных групп и контактов VK. Изменение составов и редактирование групп доступно только администраторам.
               </span>
             </div>
           </div>
@@ -196,8 +182,6 @@ export const GroupBoard: React.FC<GroupBoardProps> = ({
           {groups.map((group) => {
             const groupMembers = filteredParticipants.filter((p) => p.groupId === group.id);
             const allGroupMembers = participants.filter((p) => p.groupId === group.id);
-            const groupTasks = tasks.filter((t) => t.groupId === group.id);
-            const doneTasks = groupTasks.filter((t) => t.status === 'done');
             const groupConflicts = conflicts.filter((c) => c.groupId === group.id);
 
             return (
@@ -207,168 +191,106 @@ export const GroupBoard: React.FC<GroupBoardProps> = ({
               >
                 {/* Group Header */}
                 <div className="p-4 border-b border-zinc-800 bg-zinc-950/40 rounded-t-xl">
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-white text-base">
-                          {group.name}
-                        </span>
-                        <span className="text-xs px-2 py-0.5 rounded bg-zinc-850 text-zinc-400 border border-zinc-800 font-mono">
-                          {allGroupMembers.length} чел.
-                        </span>
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-white text-base">
+                            {group.name}
+                          </span>
+                          <span className="text-xs px-2 py-0.5 rounded bg-zinc-850 text-zinc-400 border border-zinc-800 font-mono">
+                            {allGroupMembers.length} чел.
+                          </span>
+                        </div>
                       </div>
-                      <div className="text-sm font-medium text-zinc-200 mt-0.5">
-                        «{group.projectTitle}»
-                      </div>
+
+                      {isAdmin && (
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => onEditGroup(group)}
+                            title="Редактировать название и состав группы"
+                            className="p-1.5 text-zinc-400 hover:text-white rounded hover:bg-zinc-800 transition-colors"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      )}
                     </div>
 
-                    {isAdmin && (
-                      <div className="flex items-center gap-1">
+                    {/* VK Chat and Call Sheet Dispatch Bar */}
+                    <div className="mt-3 pt-2.5 border-t border-zinc-800/80 flex flex-col gap-2">
+                      <div className="flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-1.5">
+                          <span className={`w-2 h-2 rounded-full ${group.vkChatUrl ? 'bg-emerald-400' : 'bg-amber-400'}`} />
+                          {group.vkChatUrl ? (
+                            <a
+                              href={group.vkChatUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-zinc-300 hover:text-white flex items-center gap-1 font-mono"
+                            >
+                              <span>Беседа VK</span>
+                              <ExternalLink className="w-2.5 h-2.5 text-zinc-500" />
+                            </a>
+                          ) : (
+                            <button
+                              onClick={() => onOpenVkDispatch(group, 'chat_setup')}
+                              className="text-xs text-amber-400 hover:text-amber-300 flex items-center gap-1 font-medium"
+                            >
+                              <span>+ Создать беседу VK</span>
+                            </button>
+                          )}
+                        </div>
+
                         <button
-                          onClick={() => onEditGroup(group)}
-                          title="Редактировать название, логлайн, состав"
-                          className="p-1.5 text-zinc-400 hover:text-white rounded hover:bg-zinc-800 transition-colors"
+                          onClick={() => onOpenVkDispatch(group, 'chat_setup')}
+                          title="Настройка и подключение ссылки на беседу VK"
+                          className="text-[11px] text-zinc-500 hover:text-zinc-300 transition-colors"
                         >
-                          <Edit2 className="w-3.5 h-3.5" />
+                          {group.vkChatUrl ? 'Настроить' : 'Мастер ссылки'}
                         </button>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Stage and Genre row */}
-                  <div className="flex items-center justify-between text-xs text-zinc-400 mt-2.5">
-                    <span className="truncate max-w-[130px] text-zinc-400">
-                      {group.genre}
-                    </span>
-                    {isAdmin ? (
-                      <select
-                        value={group.stage}
-                        onChange={(e) =>
-                          onUpdateGroupStage(group.id, e.target.value as ProductionStage)
-                        }
-                        className="bg-zinc-900 border border-zinc-800 text-xs text-zinc-300 rounded px-2 py-1 focus:outline-none"
-                      >
-                        {Object.entries(stageLabels).map(([val, label]) => (
-                          <option key={val} value={val}>
-                            {label}
-                          </option>
-                        ))}
-                      </select>
-                    ) : (
-                      <span className="bg-zinc-900 border border-zinc-850 text-xs text-zinc-400 rounded px-2 py-0.5">
-                        {stageLabels[group.stage]}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Logline accordion */}
-                  <div className="mt-2 text-xs">
-                    <button
-                      onClick={() =>
-                        setExpandedLoglineGroupId(
-                          expandedLoglineGroupId === group.id ? null : group.id
-                        )
-                      }
-                      className="text-zinc-500 hover:text-zinc-300 flex items-center gap-1"
-                    >
-                      <span>
-                        {expandedLoglineGroupId === group.id
-                          ? 'Скрыть логлайн'
-                          : 'Логлайн проекта...'}
-                      </span>
-                      {expandedLoglineGroupId === group.id ? (
-                        <ChevronUp className="w-3 h-3" />
-                      ) : (
-                        <ChevronDown className="w-3 h-3" />
-                      )}
-                    </button>
-                    {expandedLoglineGroupId === group.id && (
-                      <p className="mt-1.5 p-2 bg-zinc-950 rounded text-xs text-zinc-300 leading-relaxed border border-zinc-800">
-                        "{group.logline}"
-                      </p>
-                    )}
-                  </div>
-
-                  {/* VK Chat and Call Sheet Dispatch Bar */}
-                  <div className="mt-2.5 pt-2 border-t border-zinc-800/80 flex flex-col gap-2">
-                    <div className="flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-1.5">
-                        <span className={`w-2 h-2 rounded-full ${group.vkChatUrl ? 'bg-emerald-400' : 'bg-amber-400'}`} />
-                        {group.vkChatUrl ? (
-                          <a
-                            href={group.vkChatUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xs text-zinc-300 hover:text-white flex items-center gap-1 font-mono"
-                          >
-                            <span>Беседа VK</span>
-                            <ExternalLink className="w-2.5 h-2.5 text-zinc-500" />
-                          </a>
-                        ) : (
-                          <button
-                            onClick={() => onOpenVkDispatch(group, 'chat_setup')}
-                            className="text-xs text-amber-400 hover:text-amber-300 flex items-center gap-1 font-medium"
-                          >
-                            <span>+ Создать беседу VK</span>
-                          </button>
-                        )}
                       </div>
 
                       <button
-                        onClick={() => onOpenVkDispatch(group, 'chat_setup')}
-                        title="Настройка и подключение ссылки на беседу VK"
-                        className="text-[11px] text-zinc-500 hover:text-zinc-300 transition-colors"
+                        onClick={() => onOpenVkDispatch(group, 'call_sheet')}
+                        title="Сформировать вызывной лист или объявление для группы в VK"
+                        className="w-full text-xs py-1.5 px-3 rounded-lg bg-zinc-800 hover:bg-zinc-750 text-white font-medium transition-colors flex items-center justify-center gap-1.5 border border-zinc-700/60 shadow-sm"
                       >
-                        {group.vkChatUrl ? 'Настроить' : 'Мастер ссылки'}
+                        <Send className="w-3.5 h-3.5 text-blue-400" />
+                        <span>Отправить вызывной / уведомление в VK</span>
                       </button>
                     </div>
 
-                    <button
-                      onClick={() => onOpenVkDispatch(group, 'call_sheet')}
-                      title="Сформировать вызывной лист или объявление для группы в VK"
-                      className="w-full text-xs py-1.5 px-3 rounded-lg bg-zinc-800 hover:bg-zinc-750 text-white font-medium transition-colors flex items-center justify-center gap-1.5 border border-zinc-700/60 shadow-sm"
-                    >
-                      <Send className="w-3.5 h-3.5 text-blue-400" />
-                      <span>Отправить вызывной / уведомление в VK</span>
-                    </button>
-                  </div>
-
-                  {/* Tasks and conflicts progress */}
-                  <div className="mt-2 pt-2 border-t border-zinc-800/80 flex items-center justify-between text-xs text-zinc-400">
-                    <span>
-                      Задачи: <b className="text-zinc-200">{doneTasks.length}</b>/{groupTasks.length}
-                    </span>
+                    {/* Conflicts and warnings badge */}
                     {(() => {
                       const avoidCount = groupConflicts.filter((c) => c.type === 'avoided_partner_conflict').length;
                       const roleCount = groupConflicts.filter((c) => c.type !== 'avoided_partner_conflict').length;
 
-                      if (avoidCount > 0) {
-                        return (
-                          <span
-                            className="text-[11px] font-bold text-rose-300 bg-rose-950/90 border border-rose-800 px-2 py-0.5 rounded flex items-center gap-1 animate-pulse"
-                            title="В группе есть участники из стоп-листа!"
-                          >
-                            <span>⛔ Стоп-лист: {avoidCount}</span>
-                          </span>
-                        );
-                      }
-                      if (roleCount > 0) {
-                        return (
-                          <span
-                            className="text-[11px] text-zinc-400 bg-zinc-850 border border-zinc-800 px-1.5 py-0.5 rounded font-mono"
-                            title="Рекомендации по ролевому составу"
-                          >
-                            Роли: {roleCount}
-                          </span>
-                        );
-                      }
+                      if (avoidCount === 0 && roleCount === 0) return null;
+
                       return (
-                        <span className="text-[11px] text-emerald-400/90 font-mono">
-                          ✓ Состав ок
-                        </span>
+                        <div className="mt-2 pt-2 border-t border-zinc-800/80 flex items-center justify-between text-xs text-zinc-400">
+                          {avoidCount > 0 ? (
+                            <span
+                              className="text-[11px] font-bold text-rose-300 bg-rose-950/90 border border-rose-800 px-2 py-0.5 rounded flex items-center gap-1 animate-pulse"
+                              title="В группе есть участники из стоп-листа!"
+                            >
+                              <span>⛔ Стоп-лист: {avoidCount}</span>
+                            </span>
+                          ) : (
+                            <span />
+                          )}
+
+                          {roleCount > 0 && (
+                            <span
+                              className="text-[11px] text-amber-400 bg-amber-950/40 border border-amber-800 px-2 py-0.5 rounded"
+                              title="Дисбаланс ролей в группе"
+                            >
+                              Предупреждений: {roleCount}
+                            </span>
+                          )}
+                        </div>
                       );
                     })()}
-                  </div>
                 </div>
 
                 {/* Members list */}
