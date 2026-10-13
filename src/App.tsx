@@ -12,6 +12,7 @@ import {
   Sparkles,
   FolderOpen,
   BookOpen,
+  KeyRound,
 } from 'lucide-react';
 
 import {
@@ -57,6 +58,7 @@ import { TasksDashboard } from './components/TasksDashboard';
 import { MemberCabinet } from './components/MemberCabinet';
 import { MediaLibrary } from './components/MediaLibrary';
 import { RoleGuidelinesView } from './components/RoleGuidelinesView';
+import { ParticipantPinsView } from './components/ParticipantPinsView';
 import { ConflictModal } from './components/ConflictModal';
 import { WorkspaceModal } from './components/WorkspaceModal';
 import { AddGroupModal } from './components/AddGroupModal';
@@ -70,7 +72,13 @@ import { DeviceSyncModal } from './components/DeviceSyncModal';
 import { RoleSwitcherModal } from './components/RoleSwitcherModal';
 import { AuditLogModal } from './components/AuditLogModal';
 import { ResetConfirmationModal } from './components/ResetConfirmationModal';
-import { isCuratorUnlocked, isUserAdminEmail, setCuratorUnlocked } from './services/accessControl';
+import {
+  isCuratorUnlocked,
+  isUserAdminEmail,
+  setCuratorUnlocked,
+  getParticipantPin,
+  setParticipantPin,
+} from './services/accessControl';
 import { ROLES } from './data/roles';
 
 export default function App() {
@@ -105,11 +113,15 @@ export default function App() {
   const [participants, setParticipants] = useState<Participant[]>(() => {
     const saved = localStorage.getItem('cinelab_participants_v4');
     const raw: Participant[] = saved ? JSON.parse(saved) : INITIAL_PARTICIPANTS;
-    return raw.map((p) => ({
-      ...p,
-      preferredWithIds: p.preferredWithIds || [],
-      avoidedWithIds: p.avoidedWithIds || [],
-    }));
+    return raw.map((p, idx) => {
+      const pin = getParticipantPin(p.id, p.pinCode);
+      return {
+        ...p,
+        pinCode: pin,
+        preferredWithIds: p.preferredWithIds || [],
+        avoidedWithIds: p.avoidedWithIds || [],
+      };
+    });
   });
 
   const [tasks, setTasks] = useState<Task[]>(() => {
@@ -156,7 +168,7 @@ export default function App() {
 
   // UI state
   const [currentView, setCurrentView] = useState<'moderator' | 'member' | 'guidelines'>('moderator');
-  const [moderatorTab, setModeratorTab] = useState<'teams' | 'tasks' | 'materials' | 'guidelines'>('teams');
+  const [moderatorTab, setModeratorTab] = useState<'teams' | 'tasks' | 'materials' | 'guidelines' | 'pins'>('teams');
   const [activeGuidelineRole, setActiveGuidelineRole] = useState<RoleType>('director');
   const [selectedMember, setSelectedMember] = useState<Participant>(() => INITIAL_PARTICIPANTS[0]);
 
@@ -228,11 +240,15 @@ export default function App() {
             }
           }
           if (remoteParticipants && remoteParticipants.length > 0) {
-            const normalized = remoteParticipants.map((p) => ({
-              ...p,
-              preferredWithIds: p.preferredWithIds || [],
-              avoidedWithIds: p.avoidedWithIds || [],
-            }));
+            const normalized = remoteParticipants.map((p, idx) => {
+              const pin = getParticipantPin(p.id, p.pinCode);
+              return {
+                ...p,
+                pinCode: pin,
+                preferredWithIds: p.preferredWithIds || [],
+                avoidedWithIds: p.avoidedWithIds || [],
+              };
+            });
             setParticipants(normalized);
             localStorage.setItem('cinelab_participants_v4', JSON.stringify(normalized));
           }
@@ -517,6 +533,29 @@ export default function App() {
     showToast('Участник удален из лаборатории');
   };
 
+  // Update participant PIN code handler
+  const handleUpdateParticipantPin = (participantId: string, newPin: string) => {
+    const cleanPin = newPin.trim();
+    setParticipantPin(participantId, cleanPin);
+    let updated: Participant | undefined;
+    setParticipants((prev) =>
+      prev.map((p) => {
+        if (p.id === participantId) {
+          updated = { ...p, pinCode: cleanPin };
+          return updated;
+        }
+        return p;
+      })
+    );
+    if (selectedMember.id === participantId && updated) {
+      setSelectedMember(updated);
+    }
+    if (updated) {
+      syncSaveParticipant(updated);
+      showToast(`PIN-код для ${(updated as Participant).name} обновлен (${cleanPin})`);
+    }
+  };
+
   // Edit Task handler
   const handleSaveTask = (updatedTask: Task) => {
     setTasks((prev) =>
@@ -765,6 +804,10 @@ export default function App() {
         onGoogleSignOut={handleGoogleSignOut}
         isLoggingIn={isLoggingIn}
         onAutoBalance={handleAutoBalance}
+        onOpenParticipantPins={() => {
+          setCurrentView('moderator');
+          setModeratorTab('pins');
+        }}
       />
 
       {/* Conflict Bar */}
@@ -828,6 +871,21 @@ export default function App() {
                   <BookOpen className="w-4 h-4 text-amber-400" />
                   <span>Памятки ролей (12 цехов)</span>
                 </button>
+
+                {userRole === 'admin' && (
+                  <button
+                    onClick={() => setModeratorTab('pins')}
+                    className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-sm font-semibold whitespace-nowrap transition-colors ${
+                      moderatorTab === 'pins'
+                        ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-800/80 shadow-sm'
+                        : 'text-zinc-400 hover:text-emerald-300 hover:bg-zinc-900'
+                    }`}
+                    title="Реестр и восстановление 4-значных PIN-кодов всех участников"
+                  >
+                    <KeyRound className="w-4 h-4 text-emerald-400" />
+                    <span>Коды доступа и PIN ({participants.length})</span>
+                  </button>
+                )}
               </div>
 
               {userRole === 'admin' && (
@@ -916,6 +974,16 @@ export default function App() {
                 onBack={() => setModeratorTab('teams')}
                 userRole={userRole}
               />
+            ) : moderatorTab === 'pins' && userRole === 'admin' ? (
+              <ParticipantPinsView
+                participants={participants}
+                groups={groups}
+                onUpdateParticipantPin={handleUpdateParticipantPin}
+                onSelectMemberForCabinet={(m) => {
+                  setSelectedMember(m);
+                  setCurrentView('member');
+                }}
+              />
             ) : null}
           </div>
         ) : currentView === 'guidelines' ? (
@@ -948,6 +1016,7 @@ export default function App() {
               setActiveGuidelineRole(role);
               setCurrentView('guidelines');
             }}
+            onUpdateParticipantPin={handleUpdateParticipantPin}
           />
         )}
       </main>

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { User, X, Trash2 } from 'lucide-react';
+import { User, X, Trash2, KeyRound, Sparkles } from 'lucide-react';
 import { FilmGroup, Participant, RoleType } from '../types';
 import { ROLES } from '../data/roles';
+import { generateRandomPin, setParticipantPin } from '../services/accessControl';
 
 interface EditParticipantModalProps {
   isOpen: boolean;
@@ -28,6 +29,7 @@ export const EditParticipantModal: React.FC<EditParticipantModalProps> = ({
   const [role, setRole] = useState<RoleType>(participant?.role || 'director');
   const [groupId, setGroupId] = useState<string | null>(participant?.groupId || null);
   const [vkId, setVkId] = useState(participant?.vkId || '');
+  const [pinCode, setPinCode] = useState(participant?.pinCode || '');
   const [skills, setSkills] = useState(participant?.skills ? participant.skills.join(', ') : '');
   const [notes, setNotes] = useState(participant?.notes || '');
   const [preferredWithIds, setPreferredWithIds] = useState<string[]>(
@@ -44,6 +46,7 @@ export const EditParticipantModal: React.FC<EditParticipantModalProps> = ({
       setRole(participant.role);
       setGroupId(participant.groupId);
       setVkId(participant.vkId);
+      setPinCode(participant.pinCode || '');
       setSkills((participant.skills || []).join(', '));
       setNotes(participant.notes || '');
       setPreferredWithIds(participant.preferredWithIds || []);
@@ -92,7 +95,11 @@ export const EditParticipantModal: React.FC<EditParticipantModalProps> = ({
       notes: notes.trim(),
       preferredWithIds,
       avoidedWithIds,
+      pinCode: pinCode.trim().length === 4 ? pinCode.trim() : participant.pinCode,
     });
+    if (pinCode.trim().length === 4) {
+      setParticipantPin(participant.id, pinCode.trim());
+    }
     onClose();
   };
 
@@ -229,6 +236,35 @@ export const EditParticipantModal: React.FC<EditParticipantModalProps> = ({
                 placeholder="ivan_filmmaker или id123"
                 className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-zinc-500"
               />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-zinc-300 mb-1.5 flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <KeyRound className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Персональный PIN-код (4 цифры):</span>
+              </span>
+              <span className="text-[10px] text-emerald-400 font-mono">Доступ к личному кабинету</span>
+            </label>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                maxLength={4}
+                value={pinCode}
+                onChange={(e) => setPinCode(e.target.value.replace(/\D/g, ''))}
+                placeholder="Например, 4829"
+                className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-3.5 py-2.5 text-sm text-emerald-400 font-mono font-bold tracking-widest focus:outline-none focus:border-emerald-500"
+              />
+              <button
+                type="button"
+                onClick={() => setPinCode(generateRandomPin())}
+                className="px-3 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 rounded-xl text-xs font-medium shrink-0 flex items-center gap-1.5"
+                title="Сгенерировать случайный PIN"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                <span>Случайный</span>
+              </button>
             </div>
           </div>
 

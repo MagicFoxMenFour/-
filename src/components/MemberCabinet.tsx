@@ -35,6 +35,7 @@ import {
   KeyRound,
   Eye,
   EyeOff,
+  X,
 } from 'lucide-react';
 import {
   FilmGroup,
@@ -50,6 +51,7 @@ import {
   verifyParticipantPin,
   setUnlockedParticipantId,
   setParticipantPin,
+  generateRandomPin,
 } from '../services/accessControl';
 
 interface MemberCabinetProps {
@@ -72,6 +74,7 @@ interface MemberCabinetProps {
   onAddTask: (task: Omit<Task, 'id'>) => void;
   onRemoveAvoidLink?: (p1Id: string, p2Id: string) => void;
   onOpenRoleGuidelines?: (role: RoleType) => void;
+  onUpdateParticipantPin?: (participantId: string, newPin: string) => void;
 }
 
 export const MemberCabinet: React.FC<MemberCabinetProps> = ({
@@ -89,6 +92,7 @@ export const MemberCabinet: React.FC<MemberCabinetProps> = ({
   onAddTask,
   onRemoveAvoidLink,
   onOpenRoleGuidelines,
+  onUpdateParticipantPin,
 }) => {
   const [isEditingVk, setIsEditingVk] = useState(false);
   const [tempVkId, setTempVkId] = useState(currentMember.vkId);
@@ -117,7 +121,9 @@ export const MemberCabinet: React.FC<MemberCabinetProps> = ({
   );
   const [isChangePinOpen, setIsChangePinOpen] = useState(false);
   const [newPinValue, setNewPinValue] = useState('');
+  const [changePinError, setChangePinError] = useState<string | null>(null);
   const [pinChangeSuccess, setPinChangeSuccess] = useState(false);
+  const [showCurrentPinInProfile, setShowCurrentPinInProfile] = useState(false);
 
   useEffect(() => {
     setIsUnlocked(isParticipantCabinetUnlocked(currentMember.id, userRole === 'admin'));
@@ -127,11 +133,20 @@ export const MemberCabinet: React.FC<MemberCabinetProps> = ({
 
   const handleUnlockCabinet = (e: React.FormEvent) => {
     e.preventDefault();
-    if (verifyParticipantPin(currentMember.id, enteredPin)) {
+    const clean = enteredPin.trim();
+    if (!clean) {
+      setPinError('Введите ваш персональный 4-значный PIN-код');
+      return;
+    }
+    if (clean === '1234') {
+      setPinError('Вход по коду 1234 закрыт. Каждому участнику присвоен уникальный 4-значный PIN-код. Узнайте его у куратора.');
+      return;
+    }
+    if (verifyParticipantPin(currentMember.id, clean, currentMember.pinCode)) {
       setIsUnlocked(true);
       setPinError(null);
     } else {
-      setPinError('Неверный PIN-код. Доступ к личному кабинету заблокирован.');
+      setPinError('Неверный PIN-код. Обратитесь к куратору вашей группы для получения доступа.');
     }
   };
 
@@ -144,16 +159,30 @@ export const MemberCabinet: React.FC<MemberCabinetProps> = ({
   const handleSaveNewPin = (e: React.FormEvent) => {
     e.preventDefault();
     const clean = newPinValue.trim();
-    if (clean.length < 4) {
+    if (clean.length !== 4 || !/^\d{4}$/.test(clean)) {
+      setChangePinError('PIN-код должен состоять ровно из 4 цифр (например, 7482)');
+      return;
+    }
+    if (clean === '1234') {
+      setChangePinError('Код 1234 запрещен политикой безопасности');
       return;
     }
     setParticipantPin(currentMember.id, clean);
+    if (onUpdateParticipantPin) {
+      onUpdateParticipantPin(currentMember.id, clean);
+    } else {
+      onEditParticipant({
+        ...currentMember,
+        pinCode: clean,
+      });
+    }
     setPinChangeSuccess(true);
+    setChangePinError(null);
     setTimeout(() => {
       setPinChangeSuccess(false);
       setIsChangePinOpen(false);
       setNewPinValue('');
-    }, 1500);
+    }, 1600);
   };
 
   // Role Guideline State
@@ -557,6 +586,57 @@ export const MemberCabinet: React.FC<MemberCabinetProps> = ({
                   </a>
                 </div>
               )}
+            </div>
+
+            {/* PIN Code Security Card */}
+            <div className="p-3 rounded-lg bg-zinc-950 border border-zinc-800 space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-semibold text-zinc-300 flex items-center gap-1.5">
+                  <KeyRound className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Личный PIN-код:</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsChangePinOpen(true);
+                    setNewPinValue('');
+                    setChangePinError(null);
+                  }}
+                  className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1 font-medium hover:underline"
+                >
+                  <Edit3 className="w-3 h-3" />
+                  <span>Сменить</span>
+                </button>
+              </div>
+
+              <div className="flex items-center justify-between pt-0.5">
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-sm tracking-widest text-emerald-400 font-bold bg-zinc-900 px-2 py-0.5 rounded border border-zinc-800">
+                    {showCurrentPinInProfile ? (currentMember.pinCode || '----') : '••••'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowCurrentPinInProfile(!showCurrentPinInProfile)}
+                    className="text-zinc-500 hover:text-zinc-300 p-1"
+                    title={showCurrentPinInProfile ? 'Скрыть PIN' : 'Показать PIN'}
+                  >
+                    {showCurrentPinInProfile ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (currentMember.pinCode) {
+                      navigator.clipboard.writeText(currentMember.pinCode);
+                    }
+                  }}
+                  className="px-2 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded text-[11px] font-medium flex items-center gap-1 transition-colors"
+                  title="Скопировать PIN-код в буфер обмена"
+                >
+                  <Copy className="w-3 h-3" />
+                  <span>Копировать</span>
+                </button>
+              </div>
             </div>
           </div>
 
@@ -2029,6 +2109,107 @@ export const MemberCabinet: React.FC<MemberCabinetProps> = ({
                 Сохранить
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Change PIN Modal */}
+      {isChangePinOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+          <div className="bg-zinc-900 border border-zinc-700 w-full max-w-md rounded-2xl p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-emerald-950/70 border border-emerald-800 flex items-center justify-center text-emerald-400">
+                  <KeyRound className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-base font-bold text-white">Смена PIN-кода кабинета</h4>
+                  <p className="text-xs text-zinc-400">Участник: {currentMember.name}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsChangePinOpen(false);
+                  setChangePinError(null);
+                  setNewPinValue('');
+                }}
+                className="p-1.5 text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-800"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveNewPin} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-zinc-300 mb-1.5">
+                  Новый 4-значный PIN-код:
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    maxLength={4}
+                    value={newPinValue}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, '');
+                      setNewPinValue(val);
+                      setChangePinError(null);
+                    }}
+                    placeholder="Например, 6831"
+                    className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-4 py-2.5 text-center font-mono text-xl tracking-widest text-emerald-400 placeholder-zinc-600 focus:outline-none focus:border-emerald-500"
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setNewPinValue(generateRandomPin())}
+                    className="px-3 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 rounded-xl text-xs font-medium whitespace-nowrap flex items-center gap-1.5"
+                    title="Сгенерировать случайный PIN"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Случайный</span>
+                  </button>
+                </div>
+              </div>
+
+              {changePinError && (
+                <div className="p-2.5 rounded-lg bg-rose-950/60 border border-rose-800 text-xs text-rose-300">
+                  {changePinError}
+                </div>
+              )}
+
+              {pinChangeSuccess && (
+                <div className="p-2.5 rounded-lg bg-emerald-950/70 border border-emerald-800 text-xs text-emerald-200 flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>PIN-код успешно изменен и сохранен! Запомните новый код: <strong>{newPinValue}</strong></span>
+                </div>
+              )}
+
+              <div className="bg-zinc-950/50 p-3 rounded-xl border border-zinc-800/80 text-[11px] text-zinc-400 space-y-1">
+                <div>• PIN-код защищает ваш личный профиль и настройки от случайных правок.</div>
+                <div>• Вход по 1234 запрещен. Сохраните новый код, чтобы не потерять доступ.</div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsChangePinOpen(false);
+                    setChangePinError(null);
+                    setNewPinValue('');
+                  }}
+                  className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl text-xs font-semibold"
+                >
+                  Отмена
+                </button>
+                <button
+                  type="submit"
+                  disabled={pinChangeSuccess}
+                  className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-emerald-600/20 disabled:opacity-50"
+                >
+                  Сохранить новый PIN
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

@@ -1,4 +1,5 @@
 import { FilmGroup, Participant, Task, MediaAsset, AuditLogEntry } from '../types';
+import { generateParticipantPin } from '../services/accessControl';
 
 export const INITIAL_GROUPS: FilmGroup[] = [
   {
@@ -80,7 +81,7 @@ export const INITIAL_GROUPS: FilmGroup[] = [
   },
 ];
 
-export const INITIAL_PARTICIPANTS: Participant[] = [
+const RAW_INITIAL_PARTICIPANTS: Participant[] = [
   // ═══════════════ ГРУППА 1 ═══════════════
   {
     id: 'CINE-01',
@@ -925,6 +926,11 @@ export const INITIAL_PARTICIPANTS: Participant[] = [
     skills: ['Актриса театра и кино', 'Озвучание'],
   },
 ];
+
+export const INITIAL_PARTICIPANTS: Participant[] = RAW_INITIAL_PARTICIPANTS.map((p, idx) => ({
+  ...p,
+  pinCode: p.pinCode || generateParticipantPin(p.id, idx),
+}));
 
 export const COMMON_STUDENT_SERIES_TASK = "Ваша задача — разработать и подготовить пилотную серию предполагаемого сериала о студентах.\n\nСериал строится вокруг постоянных героев с разными характерами и психотипами, которые учатся и общаются в одной студенческой среде. В каждой серии могут возникать новые ситуации, конфликты, отношения и комедийные или драматические истории, при этом персонажи и их взаимоотношения постепенно развиваются.\n\nПилотная серия должна:\n• познакомить зрителя с миром сериала;\n• представить основных персонажей;\n• показать их характеры и отношения;\n• создать первый конфликт или ситуацию;\n• заинтересовать продолжением;\n• продемонстрировать, какие истории можно рассказывать в следующих сериях.\n\nИтог: готовая пилотная серия, которая одновременно работает как самостоятельная история и показывает потенциал будущего сериала.";
 

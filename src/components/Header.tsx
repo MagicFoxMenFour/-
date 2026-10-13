@@ -18,6 +18,7 @@ import {
   Menu,
   X,
   LogIn,
+  KeyRound,
 } from 'lucide-react';
 import { ConflictItem, Participant, UserRole } from '../types';
 import { User } from 'firebase/auth';
@@ -41,6 +42,7 @@ interface HeaderProps {
   onGoogleSignOut: () => void;
   isLoggingIn: boolean;
   onAutoBalance: () => void;
+  onOpenParticipantPins?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -60,6 +62,7 @@ export const Header: React.FC<HeaderProps> = ({
   onGoogleSignOut,
   isLoggingIn,
   onAutoBalance,
+  onOpenParticipantPins,
 }) => {
   const [isToolsOpen, setIsToolsOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -343,6 +346,22 @@ export const Header: React.FC<HeaderProps> = ({
                           <div className="text-[10px] text-amber-400/80">Оптимизировать составы по ролям</div>
                         </div>
                       </button>
+
+                      {onOpenParticipantPins && (
+                        <button
+                          onClick={() => {
+                            onOpenParticipantPins();
+                            setIsToolsOpen(false);
+                          }}
+                          className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-emerald-300 hover:text-emerald-200 hover:bg-emerald-950/40 transition-colors text-left"
+                        >
+                          <KeyRound className="w-4 h-4 text-emerald-400 shrink-0" />
+                          <div>
+                            <div className="font-semibold">Коды доступа (PIN)</div>
+                            <div className="text-[10px] text-emerald-400/80">Реестр и восстановление PIN</div>
+                          </div>
+                        </button>
+                      )}
                     </>
                   )}
                 </div>
@@ -560,19 +579,37 @@ export const Header: React.FC<HeaderProps> = ({
 
               {/* Audit Log (Admin Only) */}
               {userRole === 'admin' && (
-                <button
-                  onClick={() => {
-                    onOpenAuditLog();
-                    setIsMobileMenuOpen(false);
-                  }}
-                  className="w-full flex items-center justify-between p-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-850 border border-zinc-800 text-xs text-zinc-200"
-                >
-                  <div className="flex items-center gap-2">
-                    <History className="w-4 h-4 text-amber-400" />
-                    <span>Журнал аудита действий (Лог)</span>
-                  </div>
-                  <span className="font-mono text-zinc-500">→</span>
-                </button>
+                <>
+                  {onOpenParticipantPins && (
+                    <button
+                      onClick={() => {
+                        onOpenParticipantPins();
+                        setIsMobileMenuOpen(false);
+                      }}
+                      className="w-full flex items-center justify-between p-2.5 rounded-xl bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-800 text-xs text-emerald-200"
+                    >
+                      <div className="flex items-center gap-2">
+                        <KeyRound className="w-4 h-4 text-emerald-400" />
+                        <span className="font-semibold">Коды доступа и PIN участников</span>
+                      </div>
+                      <span className="font-mono text-emerald-400">→</span>
+                    </button>
+                  )}
+
+                  <button
+                    onClick={() => {
+                      onOpenAuditLog();
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className="w-full flex items-center justify-between p-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-850 border border-zinc-800 text-xs text-zinc-200"
+                  >
+                    <div className="flex items-center gap-2">
+                      <History className="w-4 h-4 text-amber-400" />
+                      <span>Журнал аудита действий (Лог)</span>
+                    </div>
+                    <span className="font-mono text-zinc-500">→</span>
+                  </button>
+                </>
               )}
 
               {/* Excel Export */}

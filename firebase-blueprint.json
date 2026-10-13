@@ -34,6 +34,7 @@
         "preferredWithIds": { "type": "array" },
         "avoidedWithIds": { "type": "array" },
         "notes": { "type": "string" },
+        "pinCode": { "type": "string" },
         "updatedAt": { "type": "string" }
       },
       "required": ["id", "name", "role"]
