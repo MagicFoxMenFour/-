@@ -1,0 +1,32 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default-deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Kinolaboratory root documents & collections
+    // Allow read & write for authorized curators / lab users
+    match /cinelab/{docId} {
+      allow read, write: if true;
+    }
+
+    match /cinelab/{docId}/{allSubcollections=**} {
+      allow read, write: if true;
+    }
+
+    // Direct collections
+    match /groups/{groupId} {
+      allow read, write: if true;
+    }
+
+    match /participants/{participantId} {
+      allow read, write: if true;
+    }
+
+    match /tasks/{taskId} {
+      allow read, write: if true;
+    }
+  }
+}

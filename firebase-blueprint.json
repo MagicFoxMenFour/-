@@ -1,0 +1,74 @@
+{
+  "entities": {
+    "FilmGroup": {
+      "title": "FilmGroup",
+      "description": "A film production team in the laboratory",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "projectTitle": { "type": "string" },
+        "genre": { "type": "string" },
+        "stage": { "type": "string" },
+        "logline": { "type": "string" },
+        "vkChatUrl": { "type": "string" },
+        "driveFolderUrl": { "type": "string" },
+        "notes": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "name"]
+    },
+    "Participant": {
+      "title": "Participant",
+      "description": "A participant member in the film laboratory",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "role": { "type": "string" },
+        "currentGroupId": { "type": "string" },
+        "vkId": { "type": "string" },
+        "vkUrl": { "type": "string" },
+        "skills": { "type": "array" },
+        "equipment": { "type": "array" },
+        "preferredWithIds": { "type": "array" },
+        "avoidedWithIds": { "type": "array" },
+        "notes": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "name", "role"]
+    },
+    "Task": {
+      "title": "Task",
+      "description": "A task or deliverable for a group/participant",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "groupId": { "type": "string" },
+        "stage": { "type": "string" },
+        "assigneeId": { "type": "string" },
+        "status": { "type": "string" },
+        "deadline": { "type": "string" },
+        "description": { "type": "string" },
+        "deliverableNotes": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "title", "groupId", "stage", "status", "deadline"]
+    }
+  },
+  "firestore": {
+    "/cinelab/main/groups/{groupId}": {
+      "schema": "FilmGroup",
+      "description": "Collection of film production groups"
+    },
+    "/cinelab/main/participants/{participantId}": {
+      "schema": "Participant",
+      "description": "Collection of film laboratory participants"
+    },
+    "/cinelab/main/tasks/{taskId}": {
+      "schema": "Task",
+      "description": "Collection of production tasks and deliverables"
+    }
+  }
+}
