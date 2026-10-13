@@ -29,6 +29,7 @@ import {
   INITIAL_PARTICIPANTS,
   INITIAL_TASKS,
   INITIAL_MEDIA_ASSETS,
+  INITIAL_AUDIT_LOGS,
 } from './data/initialData';
 import { detectConflicts } from './services/conflictDetector';
 import { exportFilmLabToExcel } from './services/excelExport';
@@ -46,8 +47,10 @@ import {
   syncDeleteTask,
   syncResetDatabase,
   testFirestoreConnection,
+  subscribeToAuditLogs,
+  seedAuditLogsIfEmpty,
 } from './services/firestoreSync';
-import { getAuditLogs, logAuditAction, clearAuditLogs } from './services/auditLogger';
+import { getAuditLogs, logAuditAction, clearAuditLogs, setLocalAuditLogs } from './services/auditLogger';
 
 import { Header } from './components/Header';
 import { ConflictAlertBanner } from './components/ConflictAlertBanner';
@@ -280,8 +283,24 @@ export default function App() {
       }
     );
 
+    const unsubAuditLogs = subscribeToAuditLogs(
+      (remoteLogs) => {
+        if (remoteLogs && remoteLogs.length > 0) {
+          setAuditLogs(remoteLogs);
+          setLocalAuditLogs(remoteLogs);
+        } else {
+          // If cloud audit log collection is empty, seed with initial logs
+          seedAuditLogsIfEmpty(INITIAL_AUDIT_LOGS);
+        }
+      },
+      (err) => {
+        console.warn('Audit logs real-time sync warning:', err);
+      }
+    );
+
     return () => {
       unsubscribe();
+      unsubAuditLogs();
     };
   }, []);
 
@@ -382,16 +401,29 @@ export default function App() {
   const handleRoleChange = (role: UserRole, participant?: Participant) => {
     setUserRole(role);
     localStorage.setItem('cinelab_user_role', role);
+    const target = participant || selectedMember;
     if (role === 'participant') {
       if (participant) {
         setSelectedMember(participant);
       }
       setCurrentView('member');
-      showToast(`Режим участника: ${participant?.name || selectedMember.name}.`);
+      showToast(`Режим участника: ${target.name}.`);
     } else {
       setCurrentView('moderator');
       showToast('Активирован режим Администратора (Куратора). Полный доступ.');
     }
+
+    logAuditAction({
+      actorName: role === 'admin' ? 'Главный продюсер (Куратор)' : target.name,
+      actorRole: role,
+      actionType: 'account_login',
+      targetTitle: role === 'admin' ? 'Панель управления куратора' : target.name,
+      details:
+        role === 'admin'
+          ? 'Активирован режим Администратора лаборатории'
+          : `Выбран профиль участника (Табельный №: ${target.id})`,
+      groupId: role === 'participant' ? target.groupId : null,
+    });
   };
 
   // Media Library handlers
@@ -499,6 +531,14 @@ export default function App() {
       prev.map((g) => (g.id === updatedGroup.id ? updatedGroup : g))
     );
     syncSaveGroup(updatedGroup);
+    logAuditAction({
+      actorName: userRole === 'admin' ? 'Главный продюсер (Куратор)' : selectedMember.name,
+      actorRole: userRole,
+      actionType: 'group_change',
+      targetTitle: updatedGroup.name,
+      details: `Обновлены данные группы: проект «${updatedGroup.projectTitle || updatedGroup.name}», стадия «${updatedGroup.stage}»`,
+      groupId: updatedGroup.id,
+    });
     showToast(`Группа «${updatedGroup.name}» успешно обновлена`);
   };
 
@@ -516,6 +556,15 @@ export default function App() {
       .filter((p) => p.groupId === null)
       .forEach((p) => syncSaveParticipant(p));
 
+    logAuditAction({
+      actorName: userRole === 'admin' ? 'Главный продюсер (Куратор)' : selectedMember.name,
+      actorRole: userRole,
+      actionType: 'group_change',
+      targetTitle: group?.name || 'Съёмочная группа',
+      details: 'Группа расформирована куратором. Участники переведены в резерв лаборатории',
+      groupId: groupId,
+    });
+
     showToast(`Группа «${group?.name}» расформирована. Участники переведены в резерв.`);
   };
 
@@ -528,14 +577,31 @@ export default function App() {
       setSelectedMember(updatedParticipant);
     }
     syncSaveParticipant(updatedParticipant);
+    logAuditAction({
+      actorName: userRole === 'admin' ? 'Главный продюсер (Куратор)' : selectedMember.name,
+      actorRole: userRole,
+      actionType: 'profile_update',
+      targetTitle: updatedParticipant.name,
+      details: `Куратор сохранил профиль участника: роль «${updatedParticipant.role}», группа «${updatedParticipant.groupId || 'Резерв'}»`,
+      groupId: updatedParticipant.groupId,
+    });
     showToast(`Данные участника ${updatedParticipant.name} сохранены`);
   };
 
   // Delete Participant handler
   const handleDeleteParticipant = (participantId: string) => {
+    const p = participants.find((item) => item.id === participantId);
     setParticipants((prev) => prev.filter((p) => p.id !== participantId));
     setTasks((prev) => prev.filter((t) => t.assignedToId !== participantId));
     syncDeleteParticipant(participantId);
+    logAuditAction({
+      actorName: userRole === 'admin' ? 'Главный продюсер (Куратор)' : selectedMember.name,
+      actorRole: userRole,
+      actionType: 'member_move',
+      targetTitle: p?.name || 'Участник',
+      details: 'Участник удален из базы лаборатории',
+      groupId: p?.groupId,
+    });
     showToast('Участник удален из лаборатории');
   };
 
@@ -558,6 +624,17 @@ export default function App() {
     }
     if (updated) {
       syncSaveParticipant(updated);
+      logAuditAction({
+        actorName: userRole === 'admin' ? 'Главный продюсер (Куратор)' : selectedMember.name,
+        actorRole: userRole,
+        actionType: 'profile_update',
+        targetTitle: updated.name,
+        details:
+          userRole === 'admin'
+            ? `Куратор обновил PIN-код доступа (${cleanPin})`
+            : 'Участник сменил персональный PIN-код кабинета',
+        groupId: updated.groupId,
+      });
       showToast(`PIN-код для ${(updated as Participant).name} обновлен (${cleanPin})`);
     }
   };
@@ -568,13 +645,30 @@ export default function App() {
       prev.map((t) => (t.id === updatedTask.id ? updatedTask : t))
     );
     syncSaveTask(updatedTask);
+    logAuditAction({
+      actorName: userRole === 'admin' ? 'Главный продюсер (Куратор)' : selectedMember.name,
+      actorRole: userRole,
+      actionType: 'task_change',
+      targetTitle: updatedTask.title,
+      details: `Статус задачи изменен на «${updatedTask.status}» (этап: ${updatedTask.stage})`,
+      groupId: updatedTask.groupId,
+    });
     showToast(`Задача «${updatedTask.title}» обновлена`);
   };
 
   // Delete Task handler
   const handleDeleteTask = (taskId: string) => {
+    const t = tasks.find((item) => item.id === taskId);
     setTasks((prev) => prev.filter((t) => t.id !== taskId));
     syncDeleteTask(taskId);
+    logAuditAction({
+      actorName: userRole === 'admin' ? 'Главный продюсер (Куратор)' : selectedMember.name,
+      actorRole: userRole,
+      actionType: 'task_change',
+      targetTitle: t?.title || 'Задача',
+      details: 'Задача удалена из производственного плана',
+      groupId: t?.groupId,
+    });
     showToast('Задача удалена');
   };
 
@@ -590,7 +684,17 @@ export default function App() {
         return p;
       })
     );
-    if (updated) syncSaveParticipant(updated);
+    if (updated) {
+      syncSaveParticipant(updated);
+      logAuditAction({
+        actorName: userRole === 'admin' ? 'Главный продюсер (Куратор)' : selectedMember.name,
+        actorRole: userRole,
+        actionType: 'profile_update',
+        targetTitle: updated.name,
+        details: `Обновлен VK профиль: id «${vkId}» (${vkUrl || 'ссылка'})`,
+        groupId: updated.groupId,
+      });
+    }
     showToast('VK профиль обновлен');
   };
 
@@ -619,6 +723,14 @@ export default function App() {
     if (updated) {
       syncSaveParticipant(updated);
       setSelectedMember(updated);
+      logAuditAction({
+        actorName: userRole === 'admin' ? 'Главный продюсер (Куратор)' : selectedMember.name,
+        actorRole: userRole,
+        actionType: 'stop_list_change',
+        targetTitle: updated.name,
+        details: `Обновлены предпочтения команды: Желаемые коллеги (${preferredWithIds.length}), Стоп-лист (${avoidedWithIds.length})`,
+        groupId: updated.groupId,
+      });
     }
     showToast('Предпочтения обновлены и сохранены в облаке');
   };
@@ -640,6 +752,17 @@ export default function App() {
     }
     if (updated) {
       syncSaveParticipant(updated);
+      logAuditAction({
+        actorName: userRole === 'admin' ? 'Главный продюсер (Куратор)' : selectedMember.name,
+        actorRole: userRole,
+        actionType: 'profile_update',
+        targetTitle: updated.name,
+        details:
+          skills.length > 0
+            ? `Обновлены особые умения (${skills.length}): ${skills.join(', ')}`
+            : 'Особые умения очищены',
+        groupId: updated.groupId,
+      });
       showToast(`Особые умения сохранены (${skills.length})`);
     }
   };
@@ -659,6 +782,13 @@ export default function App() {
     }
     localStorage.setItem('cinelab_participants_v4', JSON.stringify(updated));
     updated.forEach((p) => syncSaveParticipant(p));
+    logAuditAction({
+      actorName: 'Главный продюсер (Куратор)',
+      actorRole: 'admin',
+      actionType: 'stop_list_change',
+      targetTitle: 'Все участники',
+      details: 'Полная очистка всех стоп-листов в кинолаборатории',
+    });
     showToast('Все стоп-листы успешно очищены у всех участников');
   };
 
@@ -694,21 +824,37 @@ export default function App() {
       const active = (selectedMember.id === p1Id ? u1 : u2) || selectedMember;
       setSelectedMember(active);
     }
+    logAuditAction({
+      actorName: userRole === 'admin' ? 'Главный продюсер (Куратор)' : selectedMember.name,
+      actorRole: userRole,
+      actionType: 'stop_list_change',
+      targetTitle: `${u1?.name || p1Id} & ${u2?.name || p2Id}`,
+      details: 'Снято взаимное ограничение стоп-листа',
+    });
     showToast('Ограничение стоп-листа успешно снято');
   };
 
   // Task status update
   const handleUpdateTaskStatus = (taskId: string, status: TaskStatus) => {
+    const t = tasks.find((item) => item.id === taskId);
     setTasks((prev) =>
-      prev.map((t) => {
-        if (t.id === taskId) {
-          const updated = { ...t, status };
+      prev.map((task) => {
+        if (task.id === taskId) {
+          const updated = { ...task, status };
           syncSaveTask(updated);
           return updated;
         }
-        return t;
+        return task;
       })
     );
+    logAuditAction({
+      actorName: userRole === 'admin' ? 'Главный продюсер (Куратор)' : selectedMember.name,
+      actorRole: userRole,
+      actionType: 'task_change',
+      targetTitle: t?.title || 'Задача',
+      details: `Статус задачи изменен на «${status}»`,
+      groupId: t?.groupId,
+    });
   };
 
   // Task deliverable update
@@ -717,51 +863,93 @@ export default function App() {
     deliverableUrl: string,
     notes: string
   ) => {
+    const t = tasks.find((item) => item.id === taskId);
     setTasks((prev) =>
-      prev.map((t) => {
-        if (t.id === taskId) {
+      prev.map((task) => {
+        if (task.id === taskId) {
           const updated = {
-            ...t,
+            ...task,
             deliverableUrl,
             deliverableNotes: notes,
           };
           syncSaveTask(updated);
           return updated;
         }
-        return t;
+        return task;
       })
     );
+    logAuditAction({
+      actorName: userRole === 'admin' ? 'Главный продюсер (Куратор)' : selectedMember.name,
+      actorRole: userRole,
+      actionType: 'task_change',
+      targetTitle: t?.title || 'Задача',
+      details: `Прикреплен материал / ссылка на сдачу: ${deliverableUrl}`,
+      groupId: t?.groupId,
+    });
     showToast('Материал успешно прикреплен');
   };
 
   const handleUpdateGroupStage = (groupId: string, stage: ProductionStage) => {
+    const g = groups.find((item) => item.id === groupId);
     setGroups((prev) =>
-      prev.map((g) => {
-        if (g.id === groupId) {
-          const updated = { ...g, stage };
+      prev.map((group) => {
+        if (group.id === groupId) {
+          const updated = { ...group, stage };
           syncSaveGroup(updated);
           return updated;
         }
-        return g;
+        return group;
       })
     );
+    logAuditAction({
+      actorName: userRole === 'admin' ? 'Главный продюсер (Куратор)' : selectedMember.name,
+      actorRole: userRole,
+      actionType: 'group_change',
+      targetTitle: g?.name || 'Съёмочная группа',
+      details: `Стадия производства переведена на «${stage}»`,
+      groupId,
+    });
   };
 
   const handleAddGroup = (newGroup: FilmGroup) => {
     setGroups((prev) => [...prev, newGroup]);
     syncSaveGroup(newGroup);
+    logAuditAction({
+      actorName: 'Главный продюсер (Куратор)',
+      actorRole: 'admin',
+      actionType: 'group_change',
+      targetTitle: newGroup.name,
+      details: `Создана группа: проект «${newGroup.projectTitle || newGroup.name}», стадия «${newGroup.stage}»`,
+      groupId: newGroup.id,
+    });
     showToast(`Группа «${newGroup.name}» создана`);
   };
 
   const handleAddParticipant = (newParticipant: Participant) => {
     setParticipants((prev) => [...prev, newParticipant]);
     syncSaveParticipant(newParticipant);
+    logAuditAction({
+      actorName: 'Главный продюсер (Куратор)',
+      actorRole: 'admin',
+      actionType: 'member_move',
+      targetTitle: newParticipant.name,
+      details: `В лабораторию добавлен новый участник: роль «${newParticipant.role}», табельный №: ${newParticipant.id}`,
+      groupId: newParticipant.groupId,
+    });
     showToast(`Участник ${newParticipant.name} добавлен`);
   };
 
   const handleAddTask = (newTask: Task) => {
     setTasks((prev) => [...prev, newTask]);
     syncSaveTask(newTask);
+    logAuditAction({
+      actorName: userRole === 'admin' ? 'Главный продюсер (Куратор)' : selectedMember.name,
+      actorRole: userRole,
+      actionType: 'task_change',
+      targetTitle: newTask.title,
+      details: `Создана новая задача для группы ${newTask.groupId}: дедлайн ${newTask.deadline}`,
+      groupId: newTask.groupId,
+    });
     showToast(`Задача «${newTask.title}» добавлена`);
   };
 
@@ -779,6 +967,16 @@ export default function App() {
     const { updatedParticipants, changesSummary } = runAutoBalance(participants, groups);
     setParticipants(updatedParticipants);
     setIsConflictModalOpen(false);
+    logAuditAction({
+      actorName: 'Главный продюсер (Куратор)',
+      actorRole: 'admin',
+      actionType: 'auto_balance',
+      targetTitle: 'Съёмочные группы лаборатории',
+      details:
+        changesSummary.length > 0
+          ? `Выполнена авто-балансировка: ${changesSummary.join('; ')}`
+          : 'Проверка балансировки: составы оптимальны, конфликтов не обнаружено',
+    });
     if (changesSummary.length > 0) {
       showToast(`Авто-балансировка: ${changesSummary.join('; ')}`);
     } else {
@@ -800,6 +998,13 @@ export default function App() {
     localStorage.setItem('cinelab_participants_v4', JSON.stringify(INITIAL_PARTICIPANTS));
     localStorage.setItem('cinelab_tasks_v5', JSON.stringify(INITIAL_TASKS));
     syncResetDatabase(INITIAL_GROUPS, INITIAL_PARTICIPANTS, INITIAL_TASKS);
+    logAuditAction({
+      actorName: 'Главный продюсер (Куратор)',
+      actorRole: 'admin',
+      actionType: 'reset_data',
+      targetTitle: 'База данных лаборатории',
+      details: 'Сброс всех групп, участников и задач к эталонному состоянию 7 групп',
+    });
     setIsResetModalOpen(false);
     showToast('Данные лаборатории успешно сброшены к исходным 7 группам');
   };

@@ -1,5 +1,6 @@
 import { AuditLogEntry, AuditActionType, UserRole } from '../types';
 import { INITIAL_AUDIT_LOGS } from '../data/initialData';
+import { syncSaveAuditLog, syncClearAuditLogs } from './firestoreSync';
 
 const AUDIT_STORAGE_KEY = 'cinelab_audit_logs_v1';
 
@@ -62,6 +63,16 @@ export function getAuditLogs(): AuditLogEntry[] {
   }
 }
 
+export function setLocalAuditLogs(logs: AuditLogEntry[]): void {
+  try {
+    if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+      localStorage.setItem(AUDIT_STORAGE_KEY, JSON.stringify(logs.slice(0, 300)));
+    }
+  } catch (e) {
+    console.error('Failed to cache remote audit logs locally:', e);
+  }
+}
+
 export function logAuditAction(params: {
   actorName: string;
   actorRole: UserRole;
@@ -83,11 +94,16 @@ export function logAuditAction(params: {
 
   try {
     const current = getAuditLogs();
-    const updated = [newEntry, ...current].slice(0, 300); // keep last 300 actions
+    const updated = [newEntry, ...current.filter((c) => c.id !== newEntry.id)].slice(0, 300); // keep last 300 actions
     localStorage.setItem(AUDIT_STORAGE_KEY, JSON.stringify(updated));
   } catch (e) {
-    console.error('Failed to save audit log:', e);
+    console.error('Failed to save audit log locally:', e);
   }
+
+  // Cloud Firestore synchronization so ALL users & devices see updates in real-time
+  syncSaveAuditLog(newEntry).catch((e) => {
+    console.warn('Failed to sync audit log to Cloud Firestore:', e);
+  });
 
   return newEntry;
 }
@@ -96,8 +112,11 @@ export function clearAuditLogs(): void {
   try {
     localStorage.setItem(AUDIT_STORAGE_KEY, JSON.stringify([]));
   } catch (e) {
-    console.error('Failed to clear audit logs:', e);
+    console.error('Failed to clear audit logs locally:', e);
   }
+  syncClearAuditLogs().catch((e) => {
+    console.warn('Failed to clear audit logs in Firestore:', e);
+  });
 }
 
 export function exportAuditLogsAsText(): string {

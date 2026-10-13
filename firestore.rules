@@ -28,5 +28,9 @@ service cloud.firestore {
     match /tasks/{taskId} {
       allow read, write: if true;
     }
+
+    match /audit_logs/{logId} {
+      allow read, write: if true;
+    }
   }
 }

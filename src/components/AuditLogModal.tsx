@@ -15,6 +15,8 @@ import {
   Sparkles,
   RefreshCw,
   AlertTriangle,
+  LogIn,
+  UserCheck,
 } from 'lucide-react';
 import { AuditLogEntry, AuditActionType } from '../types';
 import { exportAuditLogsAsText } from '../services/auditLogger';
@@ -132,6 +134,18 @@ export const AuditLogModal: React.FC<AuditLogModalProps> = ({
           icon: RefreshCw,
           className: 'bg-red-950/70 text-red-300 border-red-800',
         };
+      case 'account_login':
+        return {
+          label: 'Вход',
+          icon: LogIn,
+          className: 'bg-teal-950/70 text-teal-300 border-teal-800',
+        };
+      case 'profile_update':
+        return {
+          label: 'Профиль / Умения',
+          icon: UserCheck,
+          className: 'bg-violet-950/70 text-violet-300 border-violet-800',
+        };
       case 'group_change':
       default:
         return {
@@ -185,14 +199,18 @@ export const AuditLogModal: React.FC<AuditLogModalProps> = ({
               <Shield className="w-5 h-5 text-amber-400" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <h2 className="text-base font-bold text-white">Журнал аудита действий</h2>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-950/80 border border-amber-800/80 text-amber-300 uppercase tracking-wider">
                   Лог событий куратора
                 </span>
+                <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-950/80 border border-emerald-800/80 text-emerald-300">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  Cloud Sync Live
+                </span>
               </div>
               <p className="text-xs text-zinc-400 mt-0.5">
-                История изменений составов, ролей, задач и материалов лаборатории
+                История входов в аккаунты, правок профилей, составов, задач и материалов в реальном времени
               </p>
             </div>
           </div>
@@ -228,6 +246,26 @@ export const AuditLogModal: React.FC<AuditLogModalProps> = ({
               }`}
             >
               Все ({safeLogs.length})
+            </button>
+            <button
+              onClick={() => setActiveFilter('account_login')}
+              className={`px-2.5 py-1 rounded-lg font-medium whitespace-nowrap transition-colors ${
+                activeFilter === 'account_login'
+                  ? 'bg-teal-600 text-white font-bold'
+                  : 'bg-zinc-800 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-750'
+              }`}
+            >
+              Входы
+            </button>
+            <button
+              onClick={() => setActiveFilter('profile_update')}
+              className={`px-2.5 py-1 rounded-lg font-medium whitespace-nowrap transition-colors ${
+                activeFilter === 'profile_update'
+                  ? 'bg-violet-600 text-white font-bold'
+                  : 'bg-zinc-800 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-750'
+              }`}
+            >
+              Профили / Умения
             </button>
             <button
               onClick={() => setActiveFilter('member_move')}

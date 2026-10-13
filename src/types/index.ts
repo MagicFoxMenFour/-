@@ -171,7 +171,9 @@ export type AuditActionType =
   | 'group_change'
   | 'media_change'
   | 'auto_balance'
-  | 'reset_data';
+  | 'reset_data'
+  | 'account_login'
+  | 'profile_update';
 
 export interface AuditLogEntry {
   id: string;

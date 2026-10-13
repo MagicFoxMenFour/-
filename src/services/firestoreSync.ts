@@ -12,7 +12,7 @@ import {
   getDocFromServer,
 } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
-import { FilmGroup, Participant, Task } from '../types';
+import { FilmGroup, Participant, Task, AuditLogEntry } from '../types';
 
 // Initialize or get Firebase App
 export const firebaseApp = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
@@ -42,6 +42,7 @@ export async function testFirestoreConnection(): Promise<boolean> {
 const GROUPS_COL = 'groups';
 const PARTICIPANTS_COL = 'participants';
 const TASKS_COL = 'tasks';
+const AUDIT_LOGS_COL = 'audit_logs';
 
 /**
  * Real-time synchronization listeners for groups, participants, tasks.
@@ -240,3 +241,60 @@ export async function syncResetDatabase(
 
   await batch.commit();
 }
+
+/**
+ * Real-time synchronization for Audit Logs across all devices & users.
+ */
+export function subscribeToAuditLogs(
+  onLogs: (logs: AuditLogEntry[]) => void,
+  onError?: (err: any) => void
+) {
+  return onSnapshot(
+    collection(db, AUDIT_LOGS_COL),
+    (snap) => {
+      const logs = snap.docs.map((d) => d.data() as AuditLogEntry);
+      // Sort newest first
+      logs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+      onLogs(logs);
+    },
+    (err) => {
+      console.error('Error fetching audit logs from firestore:', err);
+      if (onError) onError(err);
+    }
+  );
+}
+
+export async function syncSaveAuditLog(entry: AuditLogEntry): Promise<void> {
+  try {
+    await setDoc(doc(db, AUDIT_LOGS_COL, entry.id), entry);
+  } catch (e) {
+    console.error('syncSaveAuditLog error:', e);
+  }
+}
+
+export async function syncClearAuditLogs(): Promise<void> {
+  try {
+    const snap = await getDocs(collection(db, AUDIT_LOGS_COL));
+    const batch = writeBatch(db);
+    snap.docs.forEach((d) => batch.delete(d.ref));
+    await batch.commit();
+  } catch (e) {
+    console.error('syncClearAuditLogs error:', e);
+  }
+}
+
+export async function seedAuditLogsIfEmpty(initialLogs: AuditLogEntry[]): Promise<void> {
+  try {
+    const snap = await getDocs(collection(db, AUDIT_LOGS_COL));
+    if (snap.empty && initialLogs.length > 0) {
+      const batch = writeBatch(db);
+      initialLogs.slice(0, 30).forEach((log) => {
+        batch.set(doc(db, AUDIT_LOGS_COL, log.id), log);
+      });
+      await batch.commit();
+    }
+  } catch (e) {
+    console.error('seedAuditLogsIfEmpty error:', e);
+  }
+}
+

@@ -66,6 +66,7 @@ import {
 } from '../services/booksService';
 import { triggerBookDownload } from '../services/bookStorage';
 import { EditBookModal } from './EditBookModal';
+import { logAuditAction } from '../services/auditLogger';
 
 interface MemberCabinetProps {
   currentMember: Participant;
@@ -196,6 +197,14 @@ export const MemberCabinet: React.FC<MemberCabinetProps> = ({
     if (verifyParticipantPin(currentMember.id, clean, currentMember.pinCode)) {
       setIsUnlocked(true);
       setPinError(null);
+      logAuditAction({
+        actorName: currentMember.name,
+        actorRole: 'participant',
+        actionType: 'account_login',
+        targetTitle: currentMember.name,
+        details: `Успешный вход в личный кабинет по PIN-коду (Табельный №: ${currentMember.id})`,
+        groupId: currentMember.groupId,
+      });
     } else {
       setPinError('Неверный PIN-код. Обратитесь к куратору вашей группы для получения доступа.');
     }

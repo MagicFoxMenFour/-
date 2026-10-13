@@ -56,6 +56,22 @@
         "updatedAt": { "type": "string" }
       },
       "required": ["id", "title", "groupId", "stage", "status", "deadline"]
+    },
+    "AuditLogEntry": {
+      "title": "AuditLogEntry",
+      "description": "Audit and event log record for laboratory changes",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "timestamp": { "type": "string" },
+        "actorName": { "type": "string" },
+        "actorRole": { "type": "string" },
+        "actionType": { "type": "string" },
+        "targetTitle": { "type": "string" },
+        "details": { "type": "string" },
+        "groupId": { "type": "string" }
+      },
+      "required": ["id", "timestamp", "actorName", "actorRole", "actionType", "targetTitle", "details"]
     }
   },
   "firestore": {
@@ -70,6 +86,10 @@
     "/cinelab/main/tasks/{taskId}": {
       "schema": "Task",
       "description": "Collection of production tasks and deliverables"
+    },
+    "/audit_logs/{logId}": {
+      "schema": "AuditLogEntry",
+      "description": "Collection of real-time audit log events across all devices"
     }
   }
 }
