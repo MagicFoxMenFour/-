@@ -270,13 +270,13 @@ export const EditParticipantModal: React.FC<EditParticipantModalProps> = ({
 
           <div>
             <label className="block text-xs font-semibold text-zinc-300 mb-1.5">
-              Навыки и оборудование (через запятую):
+              Особые умения (через запятую):
             </label>
             <input
               type="text"
               value={skills}
               onChange={(e) => setSkills(e.target.value)}
-              placeholder="Свет, стедикам, монтаж, реквизит"
+              placeholder="Пою, танцую, знаю IT, программирование..."
               className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-zinc-500"
             />
           </div>

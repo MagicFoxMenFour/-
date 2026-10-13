@@ -231,33 +231,39 @@ export const GroupBoard: React.FC<GroupBoardProps> = ({
                               <span>Беседа VK</span>
                               <ExternalLink className="w-2.5 h-2.5 text-zinc-500" />
                             </a>
-                          ) : (
+                          ) : isAdmin ? (
                             <button
                               onClick={() => onOpenVkDispatch(group, 'chat_setup')}
                               className="text-xs text-amber-400 hover:text-amber-300 flex items-center gap-1 font-medium"
                             >
                               <span>+ Создать беседу VK</span>
                             </button>
+                          ) : (
+                            <span className="text-[11px] text-zinc-500 italic">Беседа не привязана</span>
                           )}
                         </div>
 
-                        <button
-                          onClick={() => onOpenVkDispatch(group, 'chat_setup')}
-                          title="Настройка и подключение ссылки на беседу VK"
-                          className="text-[11px] text-zinc-500 hover:text-zinc-300 transition-colors"
-                        >
-                          {group.vkChatUrl ? 'Настроить' : 'Мастер ссылки'}
-                        </button>
+                        {isAdmin && (
+                          <button
+                            onClick={() => onOpenVkDispatch(group, 'chat_setup')}
+                            title="Настройка и подключение ссылки на беседу VK"
+                            className="text-[11px] text-zinc-500 hover:text-zinc-300 transition-colors"
+                          >
+                            {group.vkChatUrl ? 'Настроить' : 'Мастер ссылки'}
+                          </button>
+                        )}
                       </div>
 
-                      <button
-                        onClick={() => onOpenVkDispatch(group, 'call_sheet')}
-                        title="Сформировать вызывной лист или объявление для группы в VK"
-                        className="w-full text-xs py-1.5 px-3 rounded-lg bg-zinc-800 hover:bg-zinc-750 text-white font-medium transition-colors flex items-center justify-center gap-1.5 border border-zinc-700/60 shadow-sm"
-                      >
-                        <Send className="w-3.5 h-3.5 text-blue-400" />
-                        <span>Отправить вызывной / уведомление в VK</span>
-                      </button>
+                      {isAdmin && (
+                        <button
+                          onClick={() => onOpenVkDispatch(group, 'call_sheet')}
+                          title="Сформировать вызывной лист или объявление для группы в VK"
+                          className="w-full text-xs py-1.5 px-3 rounded-lg bg-zinc-800 hover:bg-zinc-750 text-white font-medium transition-colors flex items-center justify-center gap-1.5 border border-zinc-700/60 shadow-sm"
+                        >
+                          <Send className="w-3.5 h-3.5 text-blue-400" />
+                          <span>Отправить вызывной / уведомление в VK</span>
+                        </button>
+                      )}
                     </div>
 
                     {/* Conflicts and warnings badge */}
@@ -418,7 +424,7 @@ export const GroupBoard: React.FC<GroupBoardProps> = ({
                       </td>
                       <td className="px-4 py-2.5 text-right">
                         <div className="flex items-center justify-end gap-2">
-                          {grp && (
+                          {isAdmin && grp && (
                             <button
                               onClick={() => onOpenVkDispatch(grp, 'call_sheet')}
                               title={`Отправить вызывной / уведомление группе «${grp.name}» в VK`}

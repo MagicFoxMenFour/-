@@ -39,6 +39,7 @@ import {
   RotateCcw,
   Trash2,
   Download,
+  Wrench,
 } from 'lucide-react';
 import {
   FilmGroup,
@@ -83,7 +84,9 @@ interface MemberCabinetProps {
   onRemoveAvoidLink?: (p1Id: string, p2Id: string) => void;
   onOpenRoleGuidelines?: (role: RoleType) => void;
   onUpdateParticipantPin?: (participantId: string, newPin: string) => void;
+  onUpdateParticipantSkills?: (participantId: string, skills: string[]) => void;
 }
+
 
 export const MemberCabinet: React.FC<MemberCabinetProps> = ({
   currentMember,
@@ -97,6 +100,7 @@ export const MemberCabinet: React.FC<MemberCabinetProps> = ({
   onRemoveAvoidLink,
   onOpenRoleGuidelines,
   onUpdateParticipantPin,
+  onUpdateParticipantSkills,
 }) => {
   const [isEditingVk, setIsEditingVk] = useState(false);
   const [tempVkId, setTempVkId] = useState(currentMember.vkId);
@@ -112,6 +116,52 @@ export const MemberCabinet: React.FC<MemberCabinetProps> = ({
   const [isSavedDesiredRoles, setIsSavedDesiredRoles] = useState(false);
   const [preferenceTab, setPreferenceTab] = useState<'preferred' | 'avoided'>('preferred');
   const [partnerSearch, setPartnerSearch] = useState('');
+
+  // Special skills state
+  const [skillsList, setSkillsList] = useState<string[]>(currentMember.skills || []);
+  const [newSkillInput, setNewSkillInput] = useState('');
+  const [isEditingSkills, setIsEditingSkills] = useState(false);
+  const [isSavedSkillsFeedback, setIsSavedSkillsFeedback] = useState(false);
+
+  useEffect(() => {
+    setSkillsList(currentMember.skills || []);
+  }, [currentMember.id, currentMember.skills]);
+
+  const handleSaveSkills = (newSkills: string[]) => {
+    const cleaned = Array.from(new Set(newSkills.map((s) => s.trim()).filter(Boolean)));
+    setSkillsList(cleaned);
+    if (onUpdateParticipantSkills) {
+      onUpdateParticipantSkills(currentMember.id, cleaned);
+    } else if (onEditParticipant) {
+      onEditParticipant({
+        ...currentMember,
+        skills: cleaned,
+      });
+    }
+    setIsSavedSkillsFeedback(true);
+    setTimeout(() => setIsSavedSkillsFeedback(false), 2500);
+  };
+
+  const handleAddSingleSkill = (skillText?: string) => {
+    const raw = (skillText !== undefined ? skillText : newSkillInput).trim();
+    if (!raw) return;
+    const items = raw.split(',').map((s) => s.trim()).filter(Boolean);
+    const updated = [...skillsList];
+    items.forEach((item) => {
+      if (!updated.includes(item)) {
+        updated.push(item);
+      }
+    });
+    handleSaveSkills(updated);
+    if (skillText === undefined) {
+      setNewSkillInput('');
+    }
+  };
+
+  const handleRemoveSkill = (skillToRemove: string) => {
+    const updated = skillsList.filter((s) => s !== skillToRemove);
+    handleSaveSkills(updated);
+  };
 
   // Personal Cabinet PIN security states
   const [enteredPin, setEnteredPin] = useState('');
@@ -530,6 +580,95 @@ export const MemberCabinet: React.FC<MemberCabinetProps> = ({
               <div className="text-xs text-zinc-400 mt-1.5 font-mono">
                 Табельный номер: {currentMember.id}
               </div>
+
+              {/* Особые умения участника (под табельным номером) */}
+              <div className="mt-3.5 pt-3 border-t border-zinc-800 space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-semibold text-zinc-300 flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Особые умения:</span>
+                  </span>
+                  <div className="flex items-center gap-2">
+                    {isSavedSkillsFeedback && (
+                      <span className="text-[11px] text-emerald-400 flex items-center gap-1 animate-fade-in font-medium">
+                        <Check className="w-3 h-3" /> Сохранено
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingSkills(!isEditingSkills)}
+                      className="text-zinc-400 hover:text-white text-xs flex items-center gap-1 transition-colors"
+                      title="Редактировать особые умения"
+                    >
+                      <Edit3 className="w-3 h-3" />
+                      <span>{isEditingSkills ? 'Готово' : (skillsList.length > 0 ? 'Изменить' : 'Добавить')}</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Чипы с особыми умениями */}
+                {skillsList.length > 0 ? (
+                  <div className="flex flex-wrap gap-1.5">
+                    {skillsList.map((skill) => (
+                      <span
+                        key={skill}
+                        className="inline-flex items-center gap-1.5 bg-zinc-950 border border-zinc-800 px-2 py-0.5 rounded-lg text-xs font-medium text-zinc-200 shadow-xs"
+                      >
+                        <span>{skill}</span>
+                        {isEditingSkills && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveSkill(skill)}
+                            title={`Удалить «${skill}»`}
+                            className="text-zinc-500 hover:text-rose-400 transition-colors p-0.5 rounded hover:bg-zinc-900"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        )}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  !isEditingSkills && (
+                    <div className="text-xs text-zinc-500 italic">
+                      Не указаны (например: пою, танцую, знаю IT, программирую)
+                    </div>
+                  )
+                )}
+
+                {/* Форма добавления умений при редактировании */}
+                {isEditingSkills && (
+                  <div className="space-y-1.5 pt-1">
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="text"
+                        value={newSkillInput}
+                        onChange={(e) => setNewSkillInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleAddSingleSkill();
+                          }
+                        }}
+                        placeholder="Пою, танцую, знаю IT, программирую..."
+                        className="flex-1 bg-zinc-950 border border-zinc-700 text-xs px-2.5 py-1.5 rounded-lg text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-zinc-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleAddSingleSkill()}
+                        disabled={!newSkillInput.trim()}
+                        className="px-2.5 py-1.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 disabled:cursor-not-allowed text-zinc-950 rounded-lg text-xs font-bold transition-colors flex items-center gap-1 shrink-0 shadow-sm"
+                      >
+                        <Plus className="w-3 h-3" />
+                        <span>Добавить</span>
+                      </button>
+                    </div>
+                    <div className="text-[10px] text-zinc-500 leading-tight">
+                      Укажите ваши таланты (можно перечислить несколько через запятую).
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* VK link row */}
@@ -632,6 +771,7 @@ export const MemberCabinet: React.FC<MemberCabinetProps> = ({
               </div>
             </div>
           </div>
+
 
           {/* Assigned Role (Approved by Curator) Card */}
           <div className="bg-zinc-900 border border-zinc-800 p-5 rounded-xl space-y-3.5 shadow-sm">

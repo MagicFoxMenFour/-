@@ -107,10 +107,22 @@ export default function App() {
   const [participants, setParticipants] = useState<Participant[]>(() => {
     const saved = localStorage.getItem('cinelab_participants_v4');
     const raw: Participant[] = saved ? JSON.parse(saved) : INITIAL_PARTICIPANTS;
-    return raw.map((p, idx) => {
+    return raw.map((p) => {
       const pin = getParticipantPin(p.id, p.pinCode);
+      const hasLegacyMockSkills = (p.skills || []).some(
+        (s) =>
+          s.includes('экспликация') ||
+          s.includes('актёрами') ||
+          s.includes('актерами') ||
+          s.includes('Мизансцена') ||
+          s.includes('Поэпизодник') ||
+          s.includes('Драматургия') ||
+          s.includes('ARRI') ||
+          s.includes('FX6')
+      );
       return {
         ...p,
+        skills: hasLegacyMockSkills ? [] : (p.skills || []),
         pinCode: pin,
         preferredWithIds: p.preferredWithIds || [],
         avoidedWithIds: p.avoidedWithIds || [],
@@ -611,6 +623,27 @@ export default function App() {
     showToast('Предпочтения обновлены и сохранены в облаке');
   };
 
+  // Participant skills update handler (accessible by both participant and admin)
+  const handleUpdateParticipantSkills = (participantId: string, skills: string[]) => {
+    let updated: Participant | undefined;
+    setParticipants((prev) =>
+      prev.map((p) => {
+        if (p.id === participantId) {
+          updated = { ...p, skills };
+          return updated;
+        }
+        return p;
+      })
+    );
+    if (selectedMember.id === participantId && updated) {
+      setSelectedMember(updated);
+    }
+    if (updated) {
+      syncSaveParticipant(updated);
+      showToast(`Особые умения сохранены (${skills.length})`);
+    }
+  };
+
   // Clear all stop-lists across all participants in the laboratory
   const handleClearAllStopLists = () => {
     const updated = participants.map((p) => ({
@@ -804,12 +837,14 @@ export default function App() {
         }}
       />
 
-      {/* Conflict Bar */}
-      <ConflictAlertBanner
-        conflicts={conflicts}
-        onOpenModal={() => setIsConflictModalOpen(true)}
-        onAutoBalance={handleAutoBalance}
-      />
+      {/* Conflict Bar (Admin Only) */}
+      {userRole === 'admin' && (
+        <ConflictAlertBanner
+          conflicts={conflicts}
+          onOpenModal={() => setIsConflictModalOpen(true)}
+          onAutoBalance={handleAutoBalance}
+        />
+      )}
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-[1800px] 2xl:max-w-[2100px] w-full mx-auto px-3 sm:px-6 lg:px-8 2xl:px-12 py-4 sm:py-6">
@@ -899,6 +934,7 @@ export default function App() {
                   }
                 }}
                 onOpenVkDispatch={(g, initialTab) => {
+                  if (userRole !== 'admin') return;
                   setDispatchingGroup(g);
                   if (initialTab) setDispatchInitialTab(initialTab);
                   else setDispatchInitialTab('call_sheet');
@@ -950,6 +986,7 @@ export default function App() {
               setCurrentView('guidelines');
             }}
             onUpdateParticipantPin={handleUpdateParticipantPin}
+            onUpdateParticipantSkills={handleUpdateParticipantSkills}
           />
         )}
       </main>
@@ -963,7 +1000,7 @@ export default function App() {
       )}
 
       {/* Modals */}
-      {isConflictModalOpen && (
+      {userRole === 'admin' && isConflictModalOpen && (
         <ConflictModal
           isOpen={true}
           onClose={() => setIsConflictModalOpen(false)}
@@ -978,7 +1015,7 @@ export default function App() {
         />
       )}
 
-      {isWorkspaceModalOpen && (
+      {userRole === 'admin' && isWorkspaceModalOpen && (
         <WorkspaceModal
           isOpen={true}
           onClose={() => setIsWorkspaceModalOpen(false)}
@@ -1035,8 +1072,8 @@ export default function App() {
         />
       )}
 
-      {/* VK Dispatch & Chat Manager Modal */}
-      {dispatchingGroup && (
+      {/* VK Dispatch & Chat Manager Modal (Admin Only) */}
+      {userRole === 'admin' && dispatchingGroup && (
         <VkDispatchModal
           isOpen={true}
           onClose={() => setDispatchingGroup(null)}
@@ -1052,14 +1089,16 @@ export default function App() {
         />
       )}
 
-      {/* Cross-Device Cloud Sync Modal */}
-      <DeviceSyncModal
-        isOpen={isDeviceSyncOpen}
-        onClose={() => setIsDeviceSyncOpen(false)}
-        isCloudSynced={isCloudSynced}
-        appUrl="https://ais-pre-ss3hwzlkhw3wsw6x5uczg5-492283559503.europe-west2.run.app"
-        participants={participants}
-      />
+      {/* Cross-Device Cloud Sync Modal (Admin Only) */}
+      {userRole === 'admin' && (
+        <DeviceSyncModal
+          isOpen={isDeviceSyncOpen}
+          onClose={() => setIsDeviceSyncOpen(false)}
+          isCloudSynced={isCloudSynced}
+          appUrl="https://ais-pre-ss3hwzlkhw3wsw6x5uczg5-492283559503.europe-west2.run.app"
+          participants={participants}
+        />
+      )}
 
       {/* Role & Access Switcher Modal */}
       <RoleSwitcherModal

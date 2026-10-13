@@ -232,141 +232,141 @@ export const Header: React.FC<HeaderProps> = ({
               </button>
             )}
 
-            {/* Conflict / Stop-List Counter */}
-            <button
-              onClick={onOpenConflicts}
-              className={`flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
-                avoidCount > 0
-                  ? 'bg-rose-950/80 border-rose-700 text-rose-200 hover:bg-rose-900 shadow-sm animate-pulse'
-                  : roleCount > 0
-                  ? 'bg-zinc-900 border-zinc-750 text-zinc-300 hover:bg-zinc-850'
-                  : 'bg-zinc-900/60 border-zinc-800 text-emerald-400 hover:text-emerald-300'
-              }`}
-              title={`Стоп-листы: ${avoidCount} несовместимостей. Ролевые предупреждения: ${roleCount}. Нажмите для деталей.`}
-            >
-              <AlertCircle
-                className={`w-3.5 h-3.5 ${
-                  avoidCount > 0
-                    ? 'text-rose-400'
-                    : roleCount > 0
-                    ? 'text-amber-400/80'
-                    : 'text-emerald-400'
-                }`}
-              />
-              {avoidCount > 0 ? (
-                <span className="font-bold text-rose-300">
-                  ⛔ {avoidCount}
-                </span>
-              ) : (
-                <span className="text-emerald-400 font-mono">
-                  ✓ 0
-                </span>
-              )}
-            </button>
-
-            {/* Tools Dropdown Menu */}
-            <div className="relative" ref={toolsMenuRef}>
+            {/* Conflict / Stop-List Counter (Admin Only) */}
+            {userRole === 'admin' && (
               <button
-                onClick={() => setIsToolsOpen((prev) => !prev)}
+                onClick={onOpenConflicts}
                 className={`flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
-                  isToolsOpen
-                    ? 'bg-zinc-800 border-zinc-700 text-white'
-                    : 'bg-zinc-900 hover:bg-zinc-800 border-zinc-800 text-zinc-300 hover:text-white'
+                  avoidCount > 0
+                    ? 'bg-rose-950/80 border-rose-700 text-rose-200 hover:bg-rose-900 shadow-sm animate-pulse'
+                    : roleCount > 0
+                    ? 'bg-zinc-900 border-zinc-750 text-zinc-300 hover:bg-zinc-850'
+                    : 'bg-zinc-900/60 border-zinc-800 text-emerald-400 hover:text-emerald-300'
                 }`}
-                title="Инструменты экспорта, облачной синхронизации и авто-балансировки"
+                title={`Стоп-листы: ${avoidCount} несовместимостей. Ролевые предупреждения: ${roleCount}. Нажмите для деталей.`}
               >
-                <Wrench className="w-3.5 h-3.5 text-zinc-400" />
-                <span>Инструменты</span>
-                <ChevronDown className="w-3 h-3 text-zinc-500" />
+                <AlertCircle
+                  className={`w-3.5 h-3.5 ${
+                    avoidCount > 0
+                      ? 'text-rose-400'
+                      : roleCount > 0
+                      ? 'text-amber-400/80'
+                      : 'text-emerald-400'
+                  }`}
+                />
+                {avoidCount > 0 ? (
+                  <span className="font-bold text-rose-300">
+                    ⛔ {avoidCount}
+                  </span>
+                ) : (
+                  <span className="text-emerald-400 font-mono">
+                    ✓ 0
+                  </span>
+                )}
               </button>
+            )}
 
-              {isToolsOpen && (
-                <div className="absolute right-0 mt-1.5 w-60 bg-zinc-900 border border-zinc-700 rounded-xl shadow-2xl p-1.5 z-50 text-xs space-y-1 animate-fade-in">
-                  <div className="px-2.5 py-1.5 text-[10px] font-bold text-zinc-400 uppercase tracking-wider border-b border-zinc-800">
-                    Экспорт и интеграции
-                  </div>
+            {/* Tools Dropdown Menu (Admin Only) */}
+            {userRole === 'admin' && (
+              <div className="relative" ref={toolsMenuRef}>
+                <button
+                  onClick={() => setIsToolsOpen((prev) => !prev)}
+                  className={`flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
+                    isToolsOpen
+                      ? 'bg-zinc-800 border-zinc-700 text-white'
+                      : 'bg-zinc-900 hover:bg-zinc-800 border-zinc-800 text-zinc-300 hover:text-white'
+                  }`}
+                  title="Инструменты экспорта, облачной синхронизации и авто-балансировки"
+                >
+                  <Wrench className="w-3.5 h-3.5 text-zinc-400" />
+                  <span>Инструменты</span>
+                  <ChevronDown className="w-3 h-3 text-zinc-500" />
+                </button>
 
-                  <button
-                    onClick={() => {
-                      onExportExcel();
-                      setIsToolsOpen(false);
-                    }}
-                    className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-zinc-300 hover:text-white hover:bg-zinc-800 transition-colors text-left"
-                  >
-                    <FileSpreadsheet className="w-4 h-4 text-emerald-400 shrink-0" />
-                    <div>
-                      <div className="font-semibold">Скачать Excel (.xlsx)</div>
-                      <div className="text-[10px] text-zinc-500">Сводная таблица групп и ролей</div>
+                {isToolsOpen && (
+                  <div className="absolute right-0 mt-1.5 w-60 bg-zinc-900 border border-zinc-700 rounded-xl shadow-2xl p-1.5 z-50 text-xs space-y-1 animate-fade-in">
+                    <div className="px-2.5 py-1.5 text-[10px] font-bold text-zinc-400 uppercase tracking-wider border-b border-zinc-800">
+                      Экспорт и интеграции
                     </div>
-                  </button>
 
-                  <button
-                    onClick={() => {
-                      onOpenWorkspaceModal();
-                      setIsToolsOpen(false);
-                    }}
-                    className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-zinc-300 hover:text-white hover:bg-zinc-800 transition-colors text-left"
-                  >
-                    <CloudUpload className="w-4 h-4 text-blue-400 shrink-0" />
-                    <div>
-                      <div className="font-semibold">Google Workspace</div>
-                      <div className="text-[10px] text-zinc-500">Синхронизация Sheets / Docs / Tasks</div>
-                    </div>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      onOpenDeviceSync();
-                      setIsToolsOpen(false);
-                    }}
-                    className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-zinc-300 hover:text-white hover:bg-zinc-800 transition-colors text-left"
-                  >
-                    <Smartphone className="w-4 h-4 text-emerald-400 shrink-0" />
-                    <div>
-                      <div className="font-semibold">Телефон + ПК (QR)</div>
-                      <div className="text-[10px] text-zinc-500">Открыть на мобильном и синхронизировать</div>
-                    </div>
-                  </button>
-
-                  {userRole === 'admin' && (
-                    <>
-                      <div className="px-2.5 pt-1.5 pb-0.5 text-[10px] font-bold text-zinc-400 uppercase tracking-wider border-t border-zinc-800 mt-1">
-                        Администрирование
+                    <button
+                      onClick={() => {
+                        onExportExcel();
+                        setIsToolsOpen(false);
+                      }}
+                      className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-zinc-300 hover:text-white hover:bg-zinc-800 transition-colors text-left"
+                    >
+                      <FileSpreadsheet className="w-4 h-4 text-emerald-400 shrink-0" />
+                      <div>
+                        <div className="font-semibold">Скачать Excel (.xlsx)</div>
+                        <div className="text-[10px] text-zinc-500">Сводная таблица групп и ролей</div>
                       </div>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        onOpenWorkspaceModal();
+                        setIsToolsOpen(false);
+                      }}
+                      className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-zinc-300 hover:text-white hover:bg-zinc-800 transition-colors text-left"
+                    >
+                      <CloudUpload className="w-4 h-4 text-blue-400 shrink-0" />
+                      <div>
+                        <div className="font-semibold">Google Workspace</div>
+                        <div className="text-[10px] text-zinc-500">Синхронизация Sheets / Docs / Tasks</div>
+                      </div>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        onOpenDeviceSync();
+                        setIsToolsOpen(false);
+                      }}
+                      className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-zinc-300 hover:text-white hover:bg-zinc-800 transition-colors text-left"
+                    >
+                      <Smartphone className="w-4 h-4 text-emerald-400 shrink-0" />
+                      <div>
+                        <div className="font-semibold">Телефон + ПК (QR)</div>
+                        <div className="text-[10px] text-zinc-500">Открыть на мобильном и синхронизировать</div>
+                      </div>
+                    </button>
+
+                    <div className="px-2.5 pt-1.5 pb-0.5 text-[10px] font-bold text-zinc-400 uppercase tracking-wider border-t border-zinc-800 mt-1">
+                      Администрирование
+                    </div>
+                    <button
+                      onClick={() => {
+                        onAutoBalance();
+                        setIsToolsOpen(false);
+                      }}
+                      className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-amber-300 hover:text-amber-200 hover:bg-amber-950/40 transition-colors text-left"
+                    >
+                      <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
+                      <div>
+                        <div className="font-semibold">Авто-балансировка</div>
+                        <div className="text-[10px] text-amber-400/80">Оптимизировать составы по ролям</div>
+                      </div>
+                    </button>
+
+                    {onOpenParticipantPins && (
                       <button
                         onClick={() => {
-                          onAutoBalance();
+                          onOpenParticipantPins();
                           setIsToolsOpen(false);
                         }}
-                        className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-amber-300 hover:text-amber-200 hover:bg-amber-950/40 transition-colors text-left"
+                        className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-emerald-300 hover:text-emerald-200 hover:bg-emerald-950/40 transition-colors text-left"
                       >
-                        <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
+                        <KeyRound className="w-4 h-4 text-emerald-400 shrink-0" />
                         <div>
-                          <div className="font-semibold">Авто-балансировка</div>
-                          <div className="text-[10px] text-amber-400/80">Оптимизировать составы по ролям</div>
+                          <div className="font-semibold">Коды доступа (PIN)</div>
+                          <div className="text-[10px] text-emerald-400/80">Реестр и восстановление PIN</div>
                         </div>
                       </button>
-
-                      {onOpenParticipantPins && (
-                        <button
-                          onClick={() => {
-                            onOpenParticipantPins();
-                            setIsToolsOpen(false);
-                          }}
-                          className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-emerald-300 hover:text-emerald-200 hover:bg-emerald-950/40 transition-colors text-left"
-                        >
-                          <KeyRound className="w-4 h-4 text-emerald-400 shrink-0" />
-                          <div>
-                            <div className="font-semibold">Коды доступа (PIN)</div>
-                            <div className="text-[10px] text-emerald-400/80">Реестр и восстановление PIN</div>
-                          </div>
-                        </button>
-                      )}
-                    </>
-                  )}
-                </div>
-              )}
-            </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Google User Avatar / Login */}
             {googleUser ? (
@@ -408,19 +408,21 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Mobile Right Controls (< md) */}
           <div className="flex md:hidden items-center gap-1.5 shrink-0">
-            {/* Conflict Counter Button */}
-            <button
-              onClick={onOpenConflicts}
-              className={`flex items-center gap-1 px-2 py-1 rounded-lg border text-xs font-semibold ${
-                avoidCount > 0
-                  ? 'bg-rose-950 border-rose-700 text-rose-300 animate-pulse'
-                  : 'bg-zinc-900 border-zinc-800 text-emerald-400'
-              }`}
-              title="Проверка стоп-листов и конфликтов"
-            >
-              <AlertCircle className="w-3.5 h-3.5" />
-              <span>{avoidCount > 0 ? avoidCount : '0'}</span>
-            </button>
+            {/* Conflict Counter Button (Admin Only) */}
+            {userRole === 'admin' && (
+              <button
+                onClick={onOpenConflicts}
+                className={`flex items-center gap-1 px-2 py-1 rounded-lg border text-xs font-semibold ${
+                  avoidCount > 0
+                    ? 'bg-rose-950 border-rose-700 text-rose-300 animate-pulse'
+                    : 'bg-zinc-900 border-zinc-800 text-emerald-400'
+                }`}
+                title="Проверка стоп-листов и конфликтов"
+              >
+                <AlertCircle className="w-3.5 h-3.5" />
+                <span>{avoidCount > 0 ? avoidCount : '0'}</span>
+              </button>
+            )}
 
             {/* Role Switcher Button */}
             <button
@@ -609,10 +611,8 @@ export const Header: React.FC<HeaderProps> = ({
                     </div>
                     <span className="font-mono text-zinc-500">→</span>
                   </button>
-                </>
-              )}
 
-              {/* Excel Export */}
+                  {/* Excel Export */}
               <button
                 onClick={() => {
                   onExportExcel();
@@ -657,21 +657,21 @@ export const Header: React.FC<HeaderProps> = ({
                 <span className="font-mono text-zinc-500">→</span>
               </button>
 
-              {/* Auto balance for Admin */}
-              {userRole === 'admin' && (
-                <button
-                  onClick={() => {
-                    onAutoBalance();
-                    setIsMobileMenuOpen(false);
-                  }}
-                  className="w-full flex items-center justify-between p-2.5 rounded-xl bg-amber-950/40 hover:bg-amber-950/60 border border-amber-800/80 text-xs text-amber-200"
-                >
-                  <div className="flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-amber-400" />
-                    <span>Авто-балансировка съёмочных групп</span>
-                  </div>
-                  <span className="font-mono text-amber-400">→</span>
-                </button>
+                  {/* Auto balance for Admin */}
+                  <button
+                    onClick={() => {
+                      onAutoBalance();
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className="w-full flex items-center justify-between p-2.5 rounded-xl bg-amber-950/40 hover:bg-amber-950/60 border border-amber-800/80 text-xs text-amber-200"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-amber-400" />
+                      <span>Авто-балансировка съёмочных групп</span>
+                    </div>
+                    <span className="font-mono text-amber-400">→</span>
+                  </button>
+                </>
               )}
             </div>
           </div>

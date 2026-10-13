@@ -94,7 +94,7 @@ const RAW_INITIAL_PARTICIPANTS: Participant[] = [
     groupId: 'grp-1',
     preferredWithIds: ['CINE-02', 'CINE-03'],
     avoidedWithIds: [],
-    skills: ['Режиссёрская экспликация', 'Работа с актёрами', 'Мизансцена'],
+    skills: [],
     notes: 'Лидер первой группы.',
   },
   {
@@ -107,7 +107,7 @@ const RAW_INITIAL_PARTICIPANTS: Participant[] = [
     desiredRoles: ['screenwriter', 'editor'],
     groupId: 'grp-1',
     preferredWithIds: ['CINE-01'],
-    skills: ['Драматургия', 'Поэпизодник', 'Диалоги'],
+    skills: [],
   },
   {
     id: 'CINE-03',
@@ -119,7 +119,7 @@ const RAW_INITIAL_PARTICIPANTS: Participant[] = [
     desiredRoles: ['dop', 'camera_2'],
     groupId: 'grp-1',
     preferredWithIds: ['CINE-04', 'CINE-01'],
-    skills: ['Камера ARRI / Sony FX6', 'Световые схемы', 'Композиция'],
+    skills: [],
   },
   {
     id: 'CINE-04',
@@ -131,7 +131,7 @@ const RAW_INITIAL_PARTICIPANTS: Participant[] = [
     desiredRoles: ['camera_2', 'dop'],
     groupId: 'grp-1',
     preferredWithIds: ['CINE-03'],
-    skills: ['Стедикам', 'Крупные планы', 'Детали'],
+    skills: [],
   },
   {
     id: 'CINE-05',
@@ -143,7 +143,7 @@ const RAW_INITIAL_PARTICIPANTS: Participant[] = [
     desiredRoles: ['editor', 'sound_designer'],
     groupId: 'grp-1',
     preferredWithIds: ['CINE-01'],
-    skills: ['DaVinci Resolve', 'Черновой монтаж', 'Цветокоррекция'],
+    skills: [],
   },
   {
     id: 'CINE-06',
@@ -155,7 +155,7 @@ const RAW_INITIAL_PARTICIPANTS: Participant[] = [
     desiredRoles: ['production_designer', 'makeup_artist'],
     groupId: 'grp-1',
     preferredWithIds: ['CINE-01'],
-    skills: ['Реквизит', 'Декорации', 'Костюмы'],
+    skills: [],
   },
   {
     id: 'CINE-07',
@@ -167,7 +167,7 @@ const RAW_INITIAL_PARTICIPANTS: Participant[] = [
     desiredRoles: ['producer'],
     groupId: 'grp-1',
     preferredWithIds: ['CINE-01'],
-    skills: ['КПП', 'Логистика', 'Согласование локаций'],
+    skills: [],
   },
   {
     id: 'CINE-08',
@@ -179,7 +179,7 @@ const RAW_INITIAL_PARTICIPANTS: Participant[] = [
     desiredRoles: ['sound_designer', 'composer'],
     groupId: 'grp-1',
     preferredWithIds: ['CINE-01'],
-    skills: ['Zoom F8n', 'Петли', 'Чистовая запись звука'],
+    skills: [],
   },
   {
     id: 'CINE-09',
@@ -191,7 +191,7 @@ const RAW_INITIAL_PARTICIPANTS: Participant[] = [
     desiredRoles: ['makeup_artist', 'production_designer'],
     groupId: 'grp-1',
     preferredWithIds: ['CINE-06'],
-    skills: ['Портретный грим', 'Фактурный грим', 'Контроль на плейбэке'],
+    skills: [],
   },
   {
     id: 'CINE-10',
@@ -203,7 +203,7 @@ const RAW_INITIAL_PARTICIPANTS: Participant[] = [
     desiredRoles: ['assistant', 'director'],
     groupId: 'grp-1',
     preferredWithIds: ['CINE-01'],
-    skills: ['Хлопушка', 'Монтажные листы', 'Координация площадки'],
+    skills: [],
   },
 
   // ═══════════════ ГРУППА 2 ═══════════════
@@ -217,7 +217,7 @@ const RAW_INITIAL_PARTICIPANTS: Participant[] = [
     groupId: 'grp-2',
     preferredWithIds: ['CINE-12', 'CINE-13'],
     avoidedWithIds: [],
-    skills: ['Триллер', 'Саспенс', 'Блокинг сцен'],
+    skills: [],
   },
   {
     id: 'CINE-12',
@@ -228,7 +228,7 @@ const RAW_INITIAL_PARTICIPANTS: Participant[] = [
     role: 'screenwriter',
     groupId: 'grp-2',
     preferredWithIds: ['CINE-11'],
-    skills: ['Детективный сюжет', 'Сценарные арки', 'Диалоги'],
+    skills: [],
   },
   {
     id: 'CINE-13',
@@ -239,7 +239,7 @@ const RAW_INITIAL_PARTICIPANTS: Participant[] = [
     role: 'dop',
     groupId: 'grp-2',
     preferredWithIds: ['CINE-14', 'CINE-11'],
-    skills: ['Оптика 50мм', 'Низкий ключ', 'Контровой свет'],
+    skills: [],
   },
   {
     id: 'CINE-14',
@@ -250,7 +250,7 @@ const RAW_INITIAL_PARTICIPANTS: Participant[] = [
     role: 'camera_2',
     groupId: 'grp-2',
     preferredWithIds: ['CINE-13'],
-    skills: ['Ручная камера', 'Динамичные кадры', 'Фокус-пуллинг'],
+    skills: [],
   },
   {
     id: 'CINE-15',
@@ -261,7 +261,7 @@ const RAW_INITIAL_PARTICIPANTS: Participant[] = [
     role: 'editor',
     groupId: 'grp-2',
     preferredWithIds: ['CINE-11'],
-    skills: ['Монтаж триллера', 'Ритмические склейки', 'Premiere Pro'],
+    skills: [],
   },
   {
     id: 'CINE-16',
@@ -272,7 +272,7 @@ const RAW_INITIAL_PARTICIPANTS: Participant[] = [
     role: 'production_designer',
     groupId: 'grp-2',
     preferredWithIds: ['CINE-11'],
-    skills: ['Атмосфера интерьера', 'Фотолаборатория', 'Реквизит'],
+    skills: [],
   },
   {
     id: 'CINE-17',
@@ -283,7 +283,7 @@ const RAW_INITIAL_PARTICIPANTS: Participant[] = [
     role: 'producer',
     groupId: 'grp-2',
     preferredWithIds: ['CINE-11'],
-    skills: ['Тайминг смен', 'Бюджет', 'Координация команды'],
+    skills: [],
   },
   {
     id: 'CINE-18',
@@ -294,7 +294,7 @@ const RAW_INITIAL_PARTICIPANTS: Participant[] = [
     role: 'sound_designer',
     groupId: 'grp-2',
     preferredWithIds: ['CINE-11'],
-    skills: ['Саунд-дизайн', 'Эмбиент саспенса', 'Запись реплик'],
+    skills: [],
   },
   {
     id: 'CINE-19',
@@ -305,7 +305,7 @@ const RAW_INITIAL_PARTICIPANTS: Participant[] = [
     role: 'makeup_artist',
     groupId: 'grp-2',
     preferredWithIds: ['CINE-16'],
-    skills: ['Спецгрим', 'Макияж персонажей', 'Контроль деталей'],
+    skills: [],
   },
   {
     id: 'CINE-20',
@@ -316,7 +316,7 @@ const RAW_INITIAL_PARTICIPANTS: Participant[] = [
     role: 'assistant',
     groupId: 'grp-2',
     preferredWithIds: ['CINE-11'],
-    skills: ['Ассистент режиссёра', 'Хлопушка', 'Плейбэк'],
+    skills: [],
   },
 
   // ═══════════════ ГРУППА 3 ═══════════════
@@ -329,7 +329,7 @@ const RAW_INITIAL_PARTICIPANTS: Participant[] = [
     role: 'director',
     groupId: 'grp-3',
     preferredWithIds: ['CINE-22', 'CINE-23'],
-    skills: ['Документальное кино', 'Интервью', 'Поэтика визуального ряда'],
+    skills: [],
   },
   {
     id: 'CINE-22',
@@ -340,7 +340,7 @@ const RAW_INITIAL_PARTICIPANTS: Participant[] = [
     role: 'screenwriter',
     groupId: 'grp-3',
     preferredWithIds: ['CINE-21'],
-    skills: ['Нон-фикшн драматургия', 'Архивные поиски', 'Сценарная структура'],
+    skills: [],
   },
   {
     id: 'CINE-23',
@@ -351,7 +351,7 @@ const RAW_INITIAL_PARTICIPANTS: Participant[] = [
     role: 'dop',
     groupId: 'grp-3',
     preferredWithIds: ['CINE-24', 'CINE-21'],
-    skills: ['Документальная съёмка', 'Естественный свет', 'Камера RED'],
+    skills: [],
   },
   {
     id: 'CINE-24',
@@ -362,7 +362,7 @@ const RAW_INITIAL_PARTICIPANTS: Participant[] = [
     role: 'camera_2',
     groupId: 'grp-3',
     preferredWithIds: ['CINE-23'],
-    skills: ['Мобильный сетап', 'Съемка города', 'Таймлапсы'],
+    skills: [],
   },
   {
     id: 'CINE-25',
@@ -373,7 +373,7 @@ const RAW_INITIAL_PARTICIPANTS: Participant[] = [
     role: 'editor',
     groupId: 'grp-3',
     preferredWithIds: ['CINE-21'],
-    skills: ['Монтаж эссе', 'Работа с архивами', 'Цветокоррекция'],
+    skills: [],
   },
   {
     id: 'CINE-26',
@@ -384,7 +384,7 @@ const RAW_INITIAL_PARTICIPANTS: Participant[] = [
     role: 'production_designer',
     groupId: 'grp-3',
     preferredWithIds: ['CINE-21'],
-    skills: ['Визуальный стиль', 'Окружение', 'Светящиеся вывески'],
+    skills: [],
   },
   {
     id: 'CINE-27',
@@ -395,7 +395,7 @@ const RAW_INITIAL_PARTICIPANTS: Participant[] = [
     role: 'producer',
     groupId: 'grp-3',
     preferredWithIds: ['CINE-21'],
-    skills: ['Разрешения на съёмку', 'Логистика ночных смен', 'Тайминг'],
+    skills: [],
   },
   {
     id: 'CINE-28',
@@ -406,7 +406,7 @@ const RAW_INITIAL_PARTICIPANTS: Participant[] = [
     role: 'sound_designer',
     groupId: 'grp-3',
     preferredWithIds: ['CINE-21'],
-    skills: ['Звуки города', 'Полевая звукозапись', 'Многоканальная запись'],
+    skills: [],
   },
   {
     id: 'CINE-29',
@@ -417,7 +417,7 @@ const RAW_INITIAL_PARTICIPANTS: Participant[] = [
     role: 'makeup_artist',
     groupId: 'grp-3',
     preferredWithIds: ['CINE-26'],
-    skills: ['Натуральный грим', 'Подготовка спикеров к интервью'],
+    skills: [],
   },
   {
     id: 'CINE-30',
@@ -428,7 +428,7 @@ const RAW_INITIAL_PARTICIPANTS: Participant[] = [
     role: 'assistant',
     groupId: 'grp-3',
     preferredWithIds: ['CINE-21'],
-    skills: ['Хлопушка', 'Журнал дублей', 'Связь с героями фильма'],
+    skills: [],
   },
 
   // ═══════════════ ГРУППА 4 ═══════════════
@@ -441,7 +441,7 @@ const RAW_INITIAL_PARTICIPANTS: Participant[] = [
     role: 'director',
     groupId: 'grp-4',
     preferredWithIds: ['CINE-32', 'CINE-33'],
-    skills: ['Сай-фай концепт', 'Сложный блокинг', 'Ретро-эстетика'],
+    skills: [],
   },
   {
     id: 'CINE-32',
@@ -452,7 +452,7 @@ const RAW_INITIAL_PARTICIPANTS: Participant[] = [
     role: 'screenwriter',
     groupId: 'grp-4',
     preferredWithIds: ['CINE-31'],
-    skills: ['Фантастика', 'Временные петли', 'Диалоговые листы'],
+    skills: [],
   },
   {
     id: 'CINE-33',
@@ -463,7 +463,7 @@ const RAW_INITIAL_PARTICIPANTS: Participant[] = [
     role: 'dop',
     groupId: 'grp-4',
     preferredWithIds: ['CINE-34', 'CINE-31'],
-    skills: ['Винтажные объективы', 'Неоновый свет', 'Sony FX6'],
+    skills: [],
   },
   {
     id: 'CINE-34',
@@ -474,7 +474,7 @@ const RAW_INITIAL_PARTICIPANTS: Participant[] = [
     role: 'camera_2',
     groupId: 'grp-4',
     preferredWithIds: ['CINE-33'],
-    skills: ['Вторая камера', 'Планы с движения', 'Макросъемка'],
+    skills: [],
   },
   {
     id: 'CINE-35',
@@ -485,7 +485,7 @@ const RAW_INITIAL_PARTICIPANTS: Participant[] = [
     role: 'editor',
     groupId: 'grp-4',
     preferredWithIds: ['CINE-31'],
-    skills: ['Монтаж sci-fi', 'VHS-стилизация', 'After Effects'],
+    skills: [],
   },
   {
     id: 'CINE-36',
@@ -496,7 +496,7 @@ const RAW_INITIAL_PARTICIPANTS: Participant[] = [
     role: 'production_designer',
     groupId: 'grp-4',
     preferredWithIds: ['CINE-31'],
-    skills: ['Реквизит 90-х', 'Ламповые радиоприемники', 'Осциллографы'],
+    skills: [],
   },
   {
     id: 'CINE-37',
@@ -507,7 +507,7 @@ const RAW_INITIAL_PARTICIPANTS: Participant[] = [
     role: 'producer',
     groupId: 'grp-4',
     preferredWithIds: ['CINE-31'],
-    skills: ['Смета проекта', 'Организация павильона', 'КПП'],
+    skills: [],
   },
   {
     id: 'CINE-38',
@@ -518,7 +518,7 @@ const RAW_INITIAL_PARTICIPANTS: Participant[] = [
     role: 'sound_designer',
     groupId: 'grp-4',
     preferredWithIds: ['CINE-31'],
-    skills: ['Радиошумы', 'Аналоговые помехи', 'Синтез звука'],
+    skills: [],
   },
   {
     id: 'CINE-39',
@@ -529,7 +529,7 @@ const RAW_INITIAL_PARTICIPANTS: Participant[] = [
     role: 'assistant',
     groupId: 'grp-4',
     preferredWithIds: ['CINE-40', 'CINE-31'],
-    skills: ['Хлопушка', 'Координация актеров', 'Монтажные листы'],
+    skills: [],
   },
   {
     id: 'CINE-40',
@@ -540,7 +540,7 @@ const RAW_INITIAL_PARTICIPANTS: Participant[] = [
     role: 'assistant',
     groupId: 'grp-4',
     preferredWithIds: ['CINE-39'],
-    skills: ['Помощник продюсера', 'Тайминг смены', 'Плейбэк'],
+    skills: [],
   },
 
   // ═══════════════ ГРУППА 5 ═══════════════
@@ -553,7 +553,7 @@ const RAW_INITIAL_PARTICIPANTS: Participant[] = [
     role: 'director',
     groupId: 'grp-5',
     preferredWithIds: ['CINE-42', 'CINE-43'],
-    skills: ['Музыкальная драма', 'Пластика кадра', 'Смысловые акценты'],
+    skills: [],
   },
   {
     id: 'CINE-42',
@@ -564,7 +564,7 @@ const RAW_INITIAL_PARTICIPANTS: Participant[] = [
     role: 'screenwriter',
     groupId: 'grp-5',
     preferredWithIds: ['CINE-41'],
-    skills: ['Психологическая драма', 'Поэпизодник', 'Диалоги'],
+    skills: [],
   },
   {
     id: 'CINE-43',
@@ -575,7 +575,7 @@ const RAW_INITIAL_PARTICIPANTS: Participant[] = [
     role: 'dop',
     groupId: 'grp-5',
     preferredWithIds: ['CINE-44', 'CINE-41'],
-    skills: ['Живописный свет', 'Анаморфотная оптика', 'Blackmagic 6K'],
+    skills: [],
   },
   {
     id: 'CINE-44',
@@ -586,7 +586,7 @@ const RAW_INITIAL_PARTICIPANTS: Participant[] = [
     role: 'camera_2',
     groupId: 'grp-5',
     preferredWithIds: ['CINE-43'],
-    skills: ['Вторая камера', 'Планы рук и инструментов', 'Крупности'],
+    skills: [],
   },
   {
     id: 'CINE-45',
@@ -597,7 +597,7 @@ const RAW_INITIAL_PARTICIPANTS: Participant[] = [
     role: 'editor',
     groupId: 'grp-5',
     preferredWithIds: ['CINE-41'],
-    skills: ['Монтаж под музыку', 'Синхронизация фонограммы', 'Ритмика'],
+    skills: [],
   },
   {
     id: 'CINE-46',
@@ -608,7 +608,7 @@ const RAW_INITIAL_PARTICIPANTS: Participant[] = [
     role: 'production_designer',
     groupId: 'grp-5',
     preferredWithIds: ['CINE-41'],
-    skills: ['Концертный зал', 'Музыкальные инструменты', 'Декорации'],
+    skills: [],
   },
   {
     id: 'CINE-47',
@@ -619,7 +619,7 @@ const RAW_INITIAL_PARTICIPANTS: Participant[] = [
     role: 'producer',
     groupId: 'grp-5',
     preferredWithIds: ['CINE-41'],
-    skills: ['Аренда филармонии', 'КПП смен', 'Тайминг'],
+    skills: [],
   },
   {
     id: 'CINE-48',
@@ -630,7 +630,7 @@ const RAW_INITIAL_PARTICIPANTS: Participant[] = [
     role: 'sound_designer',
     groupId: 'grp-5',
     preferredWithIds: ['CINE-49', 'CINE-41'],
-    skills: ['Стереопара DPA', 'Акустика залов', 'Чистовая запись скрипки'],
+    skills: [],
   },
   {
     id: 'CINE-49',
@@ -641,7 +641,7 @@ const RAW_INITIAL_PARTICIPANTS: Participant[] = [
     role: 'composer',
     groupId: 'grp-5',
     preferredWithIds: ['CINE-48', 'CINE-41'],
-    skills: ['Оригинальный саундтрек', 'Струнные партии', 'Лейтмотивы'],
+    skills: [],
   },
   {
     id: 'CINE-50',
@@ -652,7 +652,7 @@ const RAW_INITIAL_PARTICIPANTS: Participant[] = [
     role: 'assistant',
     groupId: 'grp-5',
     preferredWithIds: ['CINE-41'],
-    skills: ['Хлопушка', 'Координация смены', 'Помощь операторам'],
+    skills: [],
   },
 
   // ═══════════════ ГРУППА 6 ═══════════════
@@ -665,7 +665,7 @@ const RAW_INITIAL_PARTICIPANTS: Participant[] = [
     role: 'director',
     groupId: 'grp-6',
     preferredWithIds: ['CINE-52', 'CINE-53'],
-    skills: ['Мистика', 'Работа с природным пространством', 'Символизм'],
+    skills: [],
   },
   {
     id: 'CINE-52',
@@ -676,7 +676,7 @@ const RAW_INITIAL_PARTICIPANTS: Participant[] = [
     role: 'screenwriter',
     groupId: 'grp-6',
     preferredWithIds: ['CINE-51'],
-    skills: ['Притча', 'Монологи', 'Глубокая фабула'],
+    skills: [],
   },
   {
     id: 'CINE-53',
@@ -687,7 +687,7 @@ const RAW_INITIAL_PARTICIPANTS: Participant[] = [
     role: 'dop',
     groupId: 'grp-6',
     preferredWithIds: ['CINE-54', 'CINE-51'],
-    skills: ['Штормовая съёмка', 'Широкоугольная оптика', 'Дроны'],
+    skills: [],
   },
   {
     id: 'CINE-54',
@@ -698,7 +698,7 @@ const RAW_INITIAL_PARTICIPANTS: Participant[] = [
     role: 'camera_2',
     groupId: 'grp-6',
     preferredWithIds: ['CINE-53'],
-    skills: ['Вторая камера', 'Планы волн и скал', 'Ручная съёмка'],
+    skills: [],
   },
   {
     id: 'CINE-55',
@@ -709,7 +709,7 @@ const RAW_INITIAL_PARTICIPANTS: Participant[] = [
     role: 'editor',
     groupId: 'grp-6',
     preferredWithIds: ['CINE-51'],
-    skills: ['Медленный монтаж', 'Ритм дыхания', 'Цветокоррекция холодная'],
+    skills: [],
   },
   {
     id: 'CINE-56',
@@ -720,7 +720,7 @@ const RAW_INITIAL_PARTICIPANTS: Participant[] = [
     role: 'production_designer',
     groupId: 'grp-6',
     preferredWithIds: ['CINE-51'],
-    skills: ['Интерьер маяка', 'Винтажные карты', 'Старинные фонари'],
+    skills: [],
   },
   {
     id: 'CINE-57',
@@ -731,7 +731,7 @@ const RAW_INITIAL_PARTICIPANTS: Participant[] = [
     role: 'producer',
     groupId: 'grp-6',
     preferredWithIds: ['CINE-51'],
-    skills: ['Экспедиционная логистика', 'Питание на выезде', 'Безопасность'],
+    skills: [],
   },
   {
     id: 'CINE-58',
@@ -742,7 +742,7 @@ const RAW_INITIAL_PARTICIPANTS: Participant[] = [
     role: 'sound_designer',
     groupId: 'grp-6',
     preferredWithIds: ['CINE-51'],
-    skills: ['Шум прибоя', 'Ветрозащита Rycote', 'Звуки маяка'],
+    skills: [],
   },
   {
     id: 'CINE-59',
@@ -753,7 +753,7 @@ const RAW_INITIAL_PARTICIPANTS: Participant[] = [
     role: 'makeup_artist',
     groupId: 'grp-6',
     preferredWithIds: ['CINE-56'],
-    skills: ['Обветренная кожа', 'Фактура холода', 'Грим смотрителя'],
+    skills: [],
   },
   {
     id: 'CINE-60',
@@ -764,7 +764,7 @@ const RAW_INITIAL_PARTICIPANTS: Participant[] = [
     role: 'assistant',
     groupId: 'grp-6',
     preferredWithIds: ['CINE-51'],
-    skills: ['Хлопушка', 'Журнал съёмок', 'Помощник на натуре'],
+    skills: [],
   },
 
   // ═══════════════ ГРУППА 7 ═══════════════
@@ -777,7 +777,7 @@ const RAW_INITIAL_PARTICIPANTS: Participant[] = [
     role: 'director',
     groupId: 'grp-7',
     preferredWithIds: ['CINE-70', 'CINE-62'], // София и Альбина Чаплыгины хотят быть вместе!
-    skills: ['Психологический диалог', 'Камерная драма', 'Работа с актерами'],
+    skills: [],
   },
   {
     id: 'CINE-62',
@@ -788,7 +788,7 @@ const RAW_INITIAL_PARTICIPANTS: Participant[] = [
     role: 'screenwriter',
     groupId: 'grp-7',
     preferredWithIds: ['CINE-61'],
-    skills: ['Глубокие диалоги', 'Семейная драма', 'Поэпизодник'],
+    skills: [],
   },
   {
     id: 'CINE-63',
@@ -799,7 +799,7 @@ const RAW_INITIAL_PARTICIPANTS: Participant[] = [
     role: 'dop',
     groupId: 'grp-7',
     preferredWithIds: ['CINE-64', 'CINE-61'],
-    skills: ['Естественный свет из окон', 'Мягкий рисунок оптики', 'Gimbal'],
+    skills: [],
   },
   {
     id: 'CINE-64',
@@ -810,7 +810,7 @@ const RAW_INITIAL_PARTICIPANTS: Participant[] = [
     role: 'camera_2',
     groupId: 'grp-7',
     preferredWithIds: ['CINE-63'],
-    skills: ['Вторая камера', 'Планы взаимодействия сестер', 'Перебивки'],
+    skills: [],
   },
   {
     id: 'CINE-65',
@@ -821,7 +821,7 @@ const RAW_INITIAL_PARTICIPANTS: Participant[] = [
     role: 'editor',
     groupId: 'grp-7',
     preferredWithIds: ['CINE-61'],
-    skills: ['Тонкий монтаж взглядов', 'Паузы', 'Цветокоррекция теплых тонов'],
+    skills: [],
   },
   {
     id: 'CINE-66',
@@ -832,7 +832,7 @@ const RAW_INITIAL_PARTICIPANTS: Participant[] = [
     role: 'production_designer',
     groupId: 'grp-7',
     preferredWithIds: ['CINE-61'],
-    skills: ['Старинная мебель', 'Архивные письма', 'Стеклянная посуда'],
+    skills: [],
   },
   {
     id: 'CINE-67',
@@ -843,7 +843,7 @@ const RAW_INITIAL_PARTICIPANTS: Participant[] = [
     role: 'producer',
     groupId: 'grp-7',
     preferredWithIds: ['CINE-61'],
-    skills: ['Локация усадьбы', 'Договор аренды', 'КПП смен'],
+    skills: [],
   },
   {
     id: 'CINE-68',
@@ -854,7 +854,7 @@ const RAW_INITIAL_PARTICIPANTS: Participant[] = [
     role: 'sound_designer',
     groupId: 'grp-7',
     preferredWithIds: ['CINE-61'],
-    skills: ['Скрип половиц', 'Чистые диалоги', 'Звуки загородного сада'],
+    skills: [],
   },
   {
     id: 'CINE-69',
@@ -865,7 +865,7 @@ const RAW_INITIAL_PARTICIPANTS: Participant[] = [
     role: 'assistant',
     groupId: 'grp-7',
     preferredWithIds: ['CINE-61'],
-    skills: ['Хлопушка', 'Помощь на площадке', 'Координация света'],
+    skills: [],
   },
   {
     id: 'CINE-70',
@@ -876,7 +876,7 @@ const RAW_INITIAL_PARTICIPANTS: Participant[] = [
     role: 'assistant',
     groupId: 'grp-7',
     preferredWithIds: ['CINE-61'],
-    skills: ['Ассистент по актерам', 'Костюмы', 'Монтажный журнал'],
+    skills: [],
   },
 
   // ═══════════════ РЕЗЕРВ ЛАБОРАТОРИИ (СКАМЕЙКА ЗАПАСНЫХ) ═══════════════
@@ -889,7 +889,7 @@ const RAW_INITIAL_PARTICIPANTS: Participant[] = [
     role: 'dop',
     groupId: null,
     preferredWithIds: ['CINE-01', 'CINE-11'],
-    skills: ['Стедикам', 'Свет', 'Камера RED'],
+    skills: [],
     notes: 'Готов на замену или усиление операторского департамента.',
   },
   {
@@ -901,7 +901,7 @@ const RAW_INITIAL_PARTICIPANTS: Participant[] = [
     role: 'producer',
     groupId: null,
     preferredWithIds: ['CINE-31'],
-    skills: ['Питчинг', 'Сметы', 'Продвижение'],
+    skills: [],
   },
   {
     id: 'CINE-73',
@@ -912,7 +912,7 @@ const RAW_INITIAL_PARTICIPANTS: Participant[] = [
     role: 'editor',
     groupId: null,
     preferredWithIds: ['CINE-61'],
-    skills: ['Быстрый черновой монтаж', 'After Effects'],
+    skills: [],
   },
   {
     id: 'CINE-74',
@@ -923,7 +923,7 @@ const RAW_INITIAL_PARTICIPANTS: Participant[] = [
     role: 'actor',
     groupId: null,
     preferredWithIds: ['CINE-41'],
-    skills: ['Актриса театра и кино', 'Озвучание'],
+    skills: [],
   },
 ];
 
