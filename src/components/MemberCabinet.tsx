@@ -850,59 +850,61 @@ export const MemberCabinet: React.FC<MemberCabinetProps> = ({
             </button>
           </div>
 
-          {/* Desired Roles (Set by Participant for Curator) Card */}
-          <div className="bg-zinc-900 border border-zinc-800 p-5 rounded-xl space-y-3.5 shadow-sm">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-sm font-bold text-white">
-                <Target className="w-4 h-4 text-indigo-400" />
-                <span>Желаемые роли (для куратора)</span>
+          {/* Desired Roles (Set by Participant for Curator) Card - only for crew members */}
+          {currentMember.role !== 'actor' && (
+            <div className="bg-zinc-900 border border-zinc-800 p-5 rounded-xl space-y-3.5 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-sm font-bold text-white">
+                  <Target className="w-4 h-4 text-indigo-400" />
+                  <span>Желаемые роли (для куратора)</span>
+                </div>
+                <span className="text-[11px] font-mono text-zinc-400">
+                  {desiredRoles.length}/3 выбрано
+                </span>
               </div>
-              <span className="text-[11px] font-mono text-zinc-400">
-                {desiredRoles.length}/3 выбрано
-              </span>
-            </div>
 
-            <p className="text-xs text-zinc-400 leading-relaxed">
-              Отметьте до 3 ролей, которые вы хотите попробовать. Куратор видит эти предпочтения на доске групп при формировании команд:
-            </p>
+              <p className="text-xs text-zinc-400 leading-relaxed">
+                Отметьте до 3 ролей, которые вы хотите попробовать. Куратор видит эти предпочтения на доске групп при формировании команд:
+              </p>
 
-            <div className="grid grid-cols-2 gap-1.5">
-              {Object.values(ROLES).map((r) => {
-                const isSelected = desiredRoles.includes(r.type);
-                const isApproved = currentMember.role === r.type;
+              <div className="grid grid-cols-2 gap-1.5">
+                {Object.values(ROLES).map((r) => {
+                  const isSelected = desiredRoles.includes(r.type);
+                  const isApproved = currentMember.role === r.type;
 
-                return (
-                  <button
-                    key={r.type}
-                    type="button"
-                    onClick={() => handleToggleDesiredRole(r.type)}
-                    className={`p-2 rounded-lg border text-left flex items-center justify-between gap-1 text-xs transition-colors ${
-                      isSelected
-                        ? 'bg-indigo-950/80 border-indigo-700 text-indigo-200 font-semibold shadow-sm'
-                        : 'bg-zinc-950 border-zinc-850 text-zinc-400 hover:text-zinc-200 hover:border-zinc-700'
-                    }`}
-                  >
-                    <span className="truncate">{r.shortTitle}</span>
-                    <div className="flex items-center gap-1 shrink-0">
-                      {isApproved && (
-                        <span title="Текущая закреплённая куратором роль" className="text-[9px] px-1 rounded bg-zinc-800 text-emerald-400 font-mono">
-                          курат.
-                        </span>
-                      )}
-                      {isSelected && <Check className="w-3 h-3 text-indigo-400" />}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-
-            {isSavedDesiredRoles && (
-              <div className="p-2 rounded bg-emerald-950/80 border border-emerald-800 text-[11px] text-emerald-300 flex items-center gap-1.5 animate-fade-in">
-                <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                <span>Пожелания сохранены и видны куратору!</span>
+                  return (
+                    <button
+                      key={r.type}
+                      type="button"
+                      onClick={() => handleToggleDesiredRole(r.type)}
+                      className={`p-2 rounded-lg border text-left flex items-center justify-between gap-1 text-xs transition-colors ${
+                        isSelected
+                          ? 'bg-indigo-950/80 border-indigo-700 text-indigo-200 font-semibold shadow-sm'
+                          : 'bg-zinc-950 border-zinc-850 text-zinc-400 hover:text-zinc-200 hover:border-zinc-700'
+                      }`}
+                    >
+                      <span className="truncate">{r.shortTitle}</span>
+                      <div className="flex items-center gap-1 shrink-0">
+                        {isApproved && (
+                          <span title="Текущая закреплённая куратором роль" className="text-[9px] px-1 rounded bg-zinc-800 text-emerald-400 font-mono">
+                            курат.
+                          </span>
+                        )}
+                        {isSelected && <Check className="w-3 h-3 text-indigo-400" />}
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
-            )}
-          </div>
+
+              {isSavedDesiredRoles && (
+                <div className="p-2 rounded bg-emerald-950/80 border border-emerald-800 text-[11px] text-emerald-300 flex items-center gap-1.5 animate-fade-in">
+                  <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <span>Пожелания сохранены и видны куратору!</span>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Right: Film Crew & Preferences */}

@@ -61,7 +61,7 @@ import { ParticipantPinsView } from './components/ParticipantPinsView';
 import { ConflictModal } from './components/ConflictModal';
 import { WorkspaceModal } from './components/WorkspaceModal';
 import { AddGroupModal } from './components/AddGroupModal';
-import { AddParticipantModal } from './components/AddParticipantModal';
+import { AddParticipantModal, generateUniqueParticipantId } from './components/AddParticipantModal';
 import { EditGroupModal } from './components/EditGroupModal';
 import { EditParticipantModal } from './components/EditParticipantModal';
 import { VkDispatchModal } from './components/VkDispatchModal';
@@ -198,6 +198,8 @@ export default function App() {
   const [isWorkspaceModalOpen, setIsWorkspaceModalOpen] = useState(false);
   const [isAddGroupModalOpen, setIsAddGroupModalOpen] = useState(false);
   const [isAddParticipantModalOpen, setIsAddParticipantModalOpen] = useState(false);
+  const [addParticipantInitialRole, setAddParticipantInitialRole] = useState<RoleType>('director');
+  const [addParticipantInitialGroupId, setAddParticipantInitialGroupId] = useState<string>('bench');
   const [isAddTaskModalOpen, setIsAddTaskModalOpen] = useState(false);
   const [isDeviceSyncOpen, setIsDeviceSyncOpen] = useState(false);
   const [isCloudSynced, setIsCloudSynced] = useState(false);
@@ -926,17 +928,28 @@ export default function App() {
   };
 
   const handleAddParticipant = (newParticipant: Participant) => {
-    setParticipants((prev) => [...prev, newParticipant]);
-    syncSaveParticipant(newParticipant);
+    // Safety guard against ID collision or overwriting existing participants
+    let finalParticipant = newParticipant;
+    if (participants.some((p) => p.id === newParticipant.id)) {
+      const safeId = generateUniqueParticipantId(newParticipant.role, participants);
+      finalParticipant = { ...newParticipant, id: safeId };
+      setParticipantPin(safeId, finalParticipant.pinCode || generateRandomPin());
+    }
+
+    setParticipants((prev) => [
+      ...prev.filter((p) => p.id !== finalParticipant.id),
+      finalParticipant,
+    ]);
+    syncSaveParticipant(finalParticipant);
     logAuditAction({
       actorName: 'Главный продюсер (Куратор)',
       actorRole: 'admin',
       actionType: 'member_move',
-      targetTitle: newParticipant.name,
-      details: `В лабораторию добавлен новый участник: роль «${newParticipant.role}», табельный №: ${newParticipant.id}`,
-      groupId: newParticipant.groupId,
+      targetTitle: finalParticipant.name,
+      details: `В лабораторию добавлен новый участник: роль «${finalParticipant.role}», табельный №: ${finalParticipant.id}`,
+      groupId: finalParticipant.groupId,
     });
-    showToast(`Участник ${newParticipant.name} добавлен`);
+    showToast(`Участник ${finalParticipant.name} (${finalParticipant.id}) успешно добавлен`);
   };
 
   const handleAddTask = (newTask: Task) => {
@@ -1122,7 +1135,16 @@ export default function App() {
                 onMoveParticipant={handleMoveParticipant}
                 onChangeRole={handleChangeRole}
                 onOpenAddGroup={() => setIsAddGroupModalOpen(true)}
-                onOpenAddParticipant={() => setIsAddParticipantModalOpen(true)}
+                onOpenAddParticipant={() => {
+                  setAddParticipantInitialRole('director');
+                  setAddParticipantInitialGroupId('bench');
+                  setIsAddParticipantModalOpen(true);
+                }}
+                onOpenAddActor={() => {
+                  setAddParticipantInitialRole('actor');
+                  setAddParticipantInitialGroupId('bench');
+                  setIsAddParticipantModalOpen(true);
+                }}
                 onEditGroup={(g) => setEditingGroup(g)}
                 onEditParticipant={(p) => setEditingParticipant(p)}
                 onDeleteGroup={handleDeleteGroup}
@@ -1248,6 +1270,8 @@ export default function App() {
           groups={groups}
           allParticipants={participants}
           onAddParticipant={handleAddParticipant}
+          initialRole={addParticipantInitialRole}
+          initialGroupId={addParticipantInitialGroupId}
         />
       )}
 

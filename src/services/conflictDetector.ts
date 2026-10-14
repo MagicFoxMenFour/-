@@ -27,6 +27,7 @@ export function detectConflicts(
     // Duplicate roles check (e.g. 2 directors)
     for (const [roleKey, members] of Object.entries(roleCounts)) {
       const role = roleKey as RoleType;
+      if (role === 'actor') continue; // Actors have free schedule across projects and no role duplication limits
       const roleDef = ROLES[role];
       if (members && members.length > roleDef.maxPerGroup) {
         for (let i = roleDef.maxPerGroup; i < members.length; i++) {

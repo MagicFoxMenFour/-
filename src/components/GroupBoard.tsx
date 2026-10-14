@@ -40,6 +40,7 @@ interface GroupBoardProps {
     group: FilmGroup,
     initialTab?: 'call_sheet' | 'announcement' | 'chat_setup'
   ) => void;
+  onOpenAddActor?: () => void;
   onRemoveAvoidLink?: (p1Id: string, p2Id: string) => void;
 }
 
@@ -57,6 +58,7 @@ export const GroupBoard: React.FC<GroupBoardProps> = ({
   onDeleteGroup,
   onSelectMemberForCabinet,
   onOpenVkDispatch,
+  onOpenAddActor,
   onRemoveAvoidLink,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -216,55 +218,6 @@ export const GroupBoard: React.FC<GroupBoardProps> = ({
                       )}
                     </div>
 
-                    {/* VK Chat and Call Sheet Dispatch Bar */}
-                    <div className="mt-3 pt-2.5 border-t border-zinc-800/80 flex flex-col gap-2">
-                      <div className="flex items-center justify-between text-xs">
-                        <div className="flex items-center gap-1.5">
-                          <span className={`w-2 h-2 rounded-full ${group.vkChatUrl ? 'bg-emerald-400' : 'bg-amber-400'}`} />
-                          {group.vkChatUrl ? (
-                            <a
-                              href={group.vkChatUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-xs text-zinc-300 hover:text-white flex items-center gap-1 font-mono"
-                            >
-                              <span>Беседа VK</span>
-                              <ExternalLink className="w-2.5 h-2.5 text-zinc-500" />
-                            </a>
-                          ) : isAdmin ? (
-                            <button
-                              onClick={() => onOpenVkDispatch(group, 'chat_setup')}
-                              className="text-xs text-amber-400 hover:text-amber-300 flex items-center gap-1 font-medium"
-                            >
-                              <span>+ Создать беседу VK</span>
-                            </button>
-                          ) : (
-                            <span className="text-[11px] text-zinc-500 italic">Беседа не привязана</span>
-                          )}
-                        </div>
-
-                        {isAdmin && (
-                          <button
-                            onClick={() => onOpenVkDispatch(group, 'chat_setup')}
-                            title="Настройка и подключение ссылки на беседу VK"
-                            className="text-[11px] text-zinc-500 hover:text-zinc-300 transition-colors"
-                          >
-                            {group.vkChatUrl ? 'Настроить' : 'Мастер ссылки'}
-                          </button>
-                        )}
-                      </div>
-
-                      {isAdmin && (
-                        <button
-                          onClick={() => onOpenVkDispatch(group, 'call_sheet')}
-                          title="Сформировать вызывной лист или объявление для группы в VK"
-                          className="w-full text-xs py-1.5 px-3 rounded-lg bg-zinc-800 hover:bg-zinc-750 text-white font-medium transition-colors flex items-center justify-center gap-1.5 border border-zinc-700/60 shadow-sm"
-                        >
-                          <Send className="w-3.5 h-3.5 text-blue-400" />
-                          <span>Отправить вызывной / уведомление в VK</span>
-                        </button>
-                      )}
-                    </div>
 
                     {/* Conflicts and warnings badge */}
                     {(() => {
@@ -424,16 +377,6 @@ export const GroupBoard: React.FC<GroupBoardProps> = ({
                       </td>
                       <td className="px-4 py-2.5 text-right">
                         <div className="flex items-center justify-end gap-2">
-                          {isAdmin && grp && (
-                            <button
-                              onClick={() => onOpenVkDispatch(grp, 'call_sheet')}
-                              title={`Отправить вызывной / уведомление группе «${grp.name}» в VK`}
-                              className="text-xs text-blue-400 hover:text-white px-2 py-1 bg-zinc-800 hover:bg-zinc-750 rounded transition-colors flex items-center gap-1"
-                            >
-                              <Send className="w-3 h-3" />
-                              <span className="hidden sm:inline">Вызывной VK</span>
-                            </button>
-                          )}
                           {isAdmin && (
                             <button
                               onClick={() => onEditParticipant(p)}
@@ -464,7 +407,7 @@ export const GroupBoard: React.FC<GroupBoardProps> = ({
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden shadow-sm">
         <div className="p-4 border-b border-zinc-800 bg-zinc-950/40 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-zinc-850 border border-zinc-750 flex items-center justify-center text-lg">
+            <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-lg">
               🎭
             </div>
             <div>
@@ -472,20 +415,39 @@ export const GroupBoard: React.FC<GroupBoardProps> = ({
                 <h3 className="font-bold text-white text-base">
                   Актёрский пул лаборатории
                 </h3>
-                <span className="text-xs px-2 py-0.5 rounded bg-zinc-800 text-zinc-300 font-mono">
+                <span className="text-xs px-2 py-0.5 rounded bg-amber-950/60 border border-amber-800/80 text-amber-300 font-mono font-semibold">
                   {actorParticipants.length} актёров
                 </span>
               </div>
               <p className="text-xs text-zinc-400 mt-0.5">
-                Актёры не закреплены за одной группой и могут сниматься одновременно в нескольких картинах (свободный график)
+                Актёры лаборатории со свободным графиком для всех съёмочных групп и картин
               </p>
             </div>
           </div>
+
+          {isAdmin && (
+            <button
+              onClick={() => (onOpenAddActor ? onOpenAddActor() : onOpenAddParticipant())}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-xs rounded-lg transition-colors shadow-sm self-start sm:self-auto"
+            >
+              <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+              <span>Добавить актёра</span>
+            </button>
+          )}
         </div>
 
         {actorParticipants.length === 0 ? (
-          <div className="p-8 text-center text-zinc-500 text-xs">
-            В лаборатории пока нет зарегистрированных актёров. Вы можете добавить актёра через кнопку «+ Участник» выбрав роль «Актёр».
+          <div className="p-8 text-center text-zinc-500 text-xs flex flex-col items-center justify-center gap-2">
+            <span>В лаборатории пока нет зарегистрированных актёров.</span>
+            {isAdmin && (
+              <button
+                onClick={() => (onOpenAddActor ? onOpenAddActor() : onOpenAddParticipant())}
+                className="mt-1 text-xs text-amber-400 hover:underline flex items-center gap-1 font-semibold"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Добавить первого актёра</span>
+              </button>
+            )}
           </div>
         ) : (
           <div className="overflow-x-auto no-scrollbar">
@@ -494,8 +456,7 @@ export const GroupBoard: React.FC<GroupBoardProps> = ({
                 <tr>
                   <th className="px-4 py-3">ID</th>
                   <th className="px-4 py-3">Актёр / Исполнитель</th>
-                  <th className="px-4 py-3">Желаемые роли</th>
-                  <th className="px-4 py-3">Участие в картинах</th>
+                  <th className="px-4 py-3">Особые умения</th>
                   <th className="px-4 py-3">ВКонтакте</th>
                   <th className="px-4 py-3 text-right">Действия</th>
                 </tr>
@@ -503,7 +464,7 @@ export const GroupBoard: React.FC<GroupBoardProps> = ({
               <tbody className="divide-y divide-zinc-800">
                 {actorParticipants.map((actor) => (
                   <tr key={actor.id} className="hover:bg-zinc-850/50 transition-colors">
-                    <td className="px-4 py-3 font-mono text-xs text-zinc-400">
+                    <td className="px-4 py-3 font-mono text-xs text-amber-400 font-semibold">
                       {actor.id}
                     </td>
                     <td className="px-4 py-3">
@@ -524,31 +485,22 @@ export const GroupBoard: React.FC<GroupBoardProps> = ({
                         )}
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-xs text-zinc-300">
-                      {actor.desiredRoles && actor.desiredRoles.length > 0 ? (
-                        <div className="flex flex-wrap gap-1">
-                          {actor.desiredRoles.map((dr, idx) => (
-                            <span key={idx} className="px-2 py-0.5 rounded bg-indigo-950/70 border border-indigo-800 text-indigo-300 text-[11px] font-mono">
-                              {ROLES[dr]?.shortTitle || dr}
+                    <td className="px-4 py-3 text-xs">
+                      {actor.skills && actor.skills.length > 0 ? (
+                        <div className="flex flex-wrap gap-1.5">
+                          {actor.skills.map((skill, idx) => (
+                            <span
+                              key={idx}
+                              className="px-2 py-0.5 rounded-md bg-amber-950/60 border border-amber-800/80 text-amber-300 text-xs font-medium flex items-center gap-1 shadow-sm"
+                            >
+                              <span className="text-[10px]">✨</span>
+                              <span>{skill}</span>
                             </span>
                           ))}
                         </div>
                       ) : (
-                        <span className="text-zinc-500 italic text-[11px]">Пожелания не указаны</span>
+                        <span className="text-zinc-500 italic text-[11px]">Особые умения не указаны</span>
                       )}
-                    </td>
-                    <td className="px-4 py-3 text-xs">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        {actor.groupId ? (
-                          <span className="px-2 py-0.5 rounded bg-zinc-800 text-zinc-200 text-xs font-medium">
-                            {groups.find((g) => g.id === actor.groupId)?.name || actor.groupId}
-                          </span>
-                        ) : (
-                          <span className="px-2 py-0.5 rounded bg-zinc-800/80 text-emerald-400 text-xs font-medium border border-zinc-700">
-                            Свободный график (все картины)
-                          </span>
-                        )}
-                      </div>
                     </td>
                     <td className="px-4 py-3 text-xs font-mono">
                       <a
@@ -574,7 +526,7 @@ export const GroupBoard: React.FC<GroupBoardProps> = ({
                         )}
                         <button
                           onClick={() => onSelectMemberForCabinet(actor)}
-                          className="text-xs text-zinc-400 hover:text-white px-2 py-1 bg-zinc-800 hover:bg-zinc-750 rounded transition-colors"
+                          className="text-xs text-zinc-400 hover:text-white px-2.5 py-1 bg-zinc-800 hover:bg-zinc-750 rounded transition-colors font-medium"
                         >
                           Кабинет
                         </button>
