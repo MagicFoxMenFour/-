@@ -198,7 +198,7 @@ export const GroupBoard: React.FC<GroupBoardProps> = ({
             return (
               <div
                 key={group.id}
-                className="bg-zinc-900 border border-zinc-800 hover:border-zinc-750 rounded-xl flex flex-col shadow-sm transition-all"
+                className="bg-zinc-900 border border-zinc-800 hover:border-zinc-750 rounded-xl flex flex-col shadow-sm transition-all overflow-hidden"
               >
                 {/* Group Header */}
                 <div className="p-4 border-b border-zinc-800 bg-zinc-950/40 rounded-t-xl">
@@ -262,7 +262,7 @@ export const GroupBoard: React.FC<GroupBoardProps> = ({
                 </div>
 
                 {/* Members list */}
-                <div className="p-3 space-y-2 flex-1 min-h-[220px]">
+                <div className="p-3 space-y-2 flex-1 min-h-[220px] overflow-hidden">
                   {groupMembers.length === 0 ? (
                     <div className="h-full flex items-center justify-center p-6 text-center text-zinc-500 text-xs">
                       Нет участников в группе
@@ -289,7 +289,7 @@ export const GroupBoard: React.FC<GroupBoardProps> = ({
           })}
 
           {/* Reserve Bench Column */}
-          <div className="bg-zinc-900/60 border border-dashed border-zinc-800 rounded-xl flex flex-col shadow-inner">
+          <div className="bg-zinc-900/60 border border-dashed border-zinc-800 rounded-xl flex flex-col shadow-inner overflow-hidden">
             <div className="p-4 border-b border-zinc-800 bg-zinc-950/40 rounded-t-xl flex items-center justify-between">
               <div>
                 <h3 className="font-bold text-white text-base">
@@ -301,7 +301,7 @@ export const GroupBoard: React.FC<GroupBoardProps> = ({
               </div>
             </div>
 
-            <div className="p-3 space-y-2 flex-1 min-h-[220px]">
+            <div className="p-3 space-y-2 flex-1 min-h-[220px] overflow-hidden">
               {benchParticipants.length === 0 ? (
                 <div className="h-full flex items-center justify-center p-6 text-center text-zinc-500 text-xs">
                   Все участники распределены
@@ -364,12 +364,12 @@ export const GroupBoard: React.FC<GroupBoardProps> = ({
                           <select
                             value={p.role}
                             onChange={(e) => onChangeRole(p.id, e.target.value as RoleType)}
-                            className="bg-zinc-950 border border-zinc-750 text-zinc-200 text-xs rounded px-2 py-1 font-medium focus:outline-none focus:border-zinc-500 cursor-pointer hover:bg-zinc-900"
+                            className="bg-zinc-950 border border-zinc-750 text-zinc-200 text-xs rounded px-2 py-1 font-medium focus:outline-none focus:border-zinc-500 cursor-pointer hover:bg-zinc-900 max-w-[160px] truncate"
                             title="Сменить роль участника"
                           >
                             {Object.entries(ROLES).map(([key, r]) => (
-                              <option key={key} value={key}>
-                                {r.title} ({r.shortTitle})
+                              <option key={key} value={key} title={r.title}>
+                                {r.shortTitle}
                               </option>
                             ))}
                           </select>
@@ -653,18 +653,18 @@ const MemberRow: React.FC<MemberRowProps> = ({
 
   return (
     <div
-      className={`p-2.5 rounded-lg border transition-colors flex items-center justify-between gap-2 text-sm ${
+      className={`p-2.5 rounded-lg border transition-colors flex items-center justify-between gap-2 text-sm overflow-hidden max-w-full ${
         hasAvoidConflict
           ? 'bg-rose-950/40 border-rose-800/80 hover:border-rose-700 shadow-sm'
-          : 'bg-zinc-950 border-zinc-800 hover:border-zinc-700'
+          : 'bg-zinc-950 border-zinc-800 hover:border-zinc-750'
       }`}
     >
-      <div className="flex items-center gap-2.5 min-w-0 flex-1">
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 flex-wrap">
+      <div className="flex items-center gap-2.5 min-w-0 flex-1 overflow-hidden">
+        <div className="min-w-0 flex-1 overflow-hidden">
+          <div className="flex items-center gap-2 flex-wrap min-w-0">
             <span
               onClick={() => onSelectMemberForCabinet(member)}
-              className="font-medium text-white cursor-pointer hover:underline text-sm"
+              className="font-medium text-white cursor-pointer hover:underline text-sm truncate"
             >
               {member.name}
             </span>
@@ -674,64 +674,64 @@ const MemberRow: React.FC<MemberRowProps> = ({
             {avoidedCount > 0 && !hasAvoidConflict && (
               <span
                 title={`Участник указал ${avoidedCount} чел. в стоп-листе`}
-                className="text-[10px] px-1.5 py-0.2 rounded bg-zinc-900 border border-zinc-800 text-rose-300/80 font-mono"
+                className="text-[10px] px-1.5 py-0.2 rounded bg-zinc-900 border border-zinc-800 text-rose-300/80 font-mono shrink-0"
               >
                 🚫 {avoidedCount}
               </span>
             )}
           </div>
 
-          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+          <div className="flex items-center gap-1.5 mt-1 flex-wrap min-w-0 max-w-full">
             {isAdmin ? (
               <select
                 value={member.role}
                 onChange={(e) => onChangeRole(member.id, e.target.value as RoleType)}
-                className="bg-zinc-900 border border-zinc-750 text-zinc-200 text-[11px] rounded px-1.5 py-0.5 font-semibold focus:outline-none focus:border-zinc-500 cursor-pointer hover:bg-zinc-850"
+                className="bg-zinc-900 border border-zinc-750 text-zinc-200 text-[11px] rounded px-1.5 py-0.5 font-semibold focus:outline-none focus:border-zinc-500 cursor-pointer hover:bg-zinc-850 max-w-[125px] sm:max-w-[140px] truncate shrink-0"
                 title="Быстрая смена роли участника (куратор)"
               >
                 {Object.entries(ROLES).map(([key, r]) => (
-                  <option key={key} value={key}>
-                    {r.shortTitle} — {r.title}
+                  <option key={key} value={key} title={r.title}>
+                    {r.shortTitle}
                   </option>
                 ))}
               </select>
             ) : (
-              <span className="text-xs font-semibold text-zinc-300">
+              <span className="text-xs font-semibold text-zinc-300 shrink-0">
                 {roleDef?.shortTitle || member.role}
               </span>
             )}
             <span
               title="Роль официально закреплена куратором"
-              className="text-[10px] px-1.5 py-0.2 rounded bg-zinc-900 border border-zinc-750 text-emerald-400 font-mono"
+              className="text-[10px] px-1.5 py-0.2 rounded bg-zinc-900 border border-zinc-750 text-emerald-400 font-mono shrink-0"
             >
               ✓ Закреплена
             </span>
             {member.desiredRoles && member.desiredRoles.length > 0 && (
               <span
                 title={`Желаемые роли участника (из личного кабинета): ${member.desiredRoles.map((r) => ROLES[r]?.shortTitle || r).join(', ')}`}
-                className={`text-[10px] px-1.5 py-0.2 rounded border font-mono flex items-center gap-1 ${
+                className={`text-[10px] px-1.5 py-0.2 rounded border font-mono flex items-center gap-1 max-w-[130px] truncate shrink-0 ${
                   member.desiredRoles.includes(member.role)
                     ? 'bg-emerald-950/70 border-emerald-800 text-emerald-300'
                     : 'bg-indigo-950/70 border-indigo-800 text-indigo-300'
                 }`}
               >
-                <span>🎯 Хочет:</span>
-                <span>{member.desiredRoles.map((r) => ROLES[r]?.shortTitle || r).join(', ')}</span>
+                <span>🎯</span>
+                <span className="truncate">{member.desiredRoles.map((r) => ROLES[r]?.shortTitle || r).join(', ')}</span>
                 {member.desiredRoles.includes(member.role) && (
-                  <span className="text-emerald-400 font-bold" title="Закреплённая куратором роль совпала с желанием участника">✓</span>
+                  <span className="text-emerald-400 font-bold shrink-0" title="Закреплённая куратором роль совпала с желанием участника">✓</span>
                 )}
               </span>
             )}
-            <span className="text-zinc-600">•</span>
+            <span className="text-zinc-600 shrink-0">•</span>
             <a
               href={member.vkUrl}
               target="_blank"
               rel="noreferrer"
               title={`Открыть VK: ${member.vkUrl}`}
-              className="text-xs text-zinc-400 hover:text-zinc-200 flex items-center gap-1 font-mono"
+              className="text-xs text-zinc-400 hover:text-zinc-200 flex items-center gap-1 font-mono shrink-0"
             >
-              <span>{member.vkId}</span>
-              <ExternalLink className="w-2.5 h-2.5 text-zinc-500" />
+              <span className="max-w-[75px] truncate">{member.vkId}</span>
+              <ExternalLink className="w-2.5 h-2.5 text-zinc-500 shrink-0" />
             </a>
           </div>
 
@@ -804,10 +804,10 @@ const MemberRow: React.FC<MemberRowProps> = ({
               const val = e.target.value;
               onMoveParticipant(member.id, val === 'bench' ? null : val);
             }}
-            className={`border text-xs rounded px-1.5 py-1 focus:outline-none ${
+            className={`border text-[11px] rounded px-1.5 py-1 focus:outline-none max-w-[85px] sm:max-w-[95px] truncate cursor-pointer ${
               hasAvoidConflict
                 ? 'bg-rose-950 border-rose-700 text-rose-200'
-                : 'bg-zinc-900 border-zinc-800 text-zinc-300'
+                : 'bg-zinc-900 border-zinc-800 text-zinc-300 hover:border-zinc-750'
             }`}
             title="Переместить в другую группу"
           >
