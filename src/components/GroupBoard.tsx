@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Plus,
   ExternalLink,
@@ -78,8 +78,17 @@ export const GroupBoard: React.FC<GroupBoardProps> = ({
     return matchesSearch && matchesRole;
   });
 
-  const benchParticipants = filteredParticipants.filter((p) => !p.groupId && p.role !== 'actor');
+  // Bench includes anyone with no group, or with an invalid group, excluding independent actors
+  const benchParticipants = filteredParticipants.filter(
+    (p) => (!p.groupId || !groups.some((g) => g.id === p.groupId)) && p.role !== 'actor'
+  );
   const actorParticipants = participants.filter((p) => p.role === 'actor');
+
+  // Groups sorted logically by number
+  const sortedGroups = useMemo(
+    () => [...groups].sort((a, b) => (a.number || 0) - (b.number || 0)),
+    [groups]
+  );
 
   return (
     <div className="space-y-6">
@@ -181,7 +190,7 @@ export const GroupBoard: React.FC<GroupBoardProps> = ({
       {/* Main Container */}
       {viewMode === 'grid' ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-          {groups.map((group) => {
+          {sortedGroups.map((group: FilmGroup) => {
             const groupMembers = filteredParticipants.filter((p) => p.groupId === group.id);
             const allGroupMembers = participants.filter((p) => p.groupId === group.id);
             const groupConflicts = conflicts.filter((c) => c.groupId === group.id);
@@ -351,12 +360,46 @@ export const GroupBoard: React.FC<GroupBoardProps> = ({
                         </button>
                       </td>
                       <td className="px-4 py-2.5">
-                        <span className="text-xs px-2 py-0.5 rounded bg-zinc-800 border border-zinc-700 text-zinc-300">
-                          {roleDef?.title || p.role}
-                        </span>
+                        {isAdmin ? (
+                          <select
+                            value={p.role}
+                            onChange={(e) => onChangeRole(p.id, e.target.value as RoleType)}
+                            className="bg-zinc-950 border border-zinc-750 text-zinc-200 text-xs rounded px-2 py-1 font-medium focus:outline-none focus:border-zinc-500 cursor-pointer hover:bg-zinc-900"
+                            title="Сменить роль участника"
+                          >
+                            {Object.entries(ROLES).map(([key, r]) => (
+                              <option key={key} value={key}>
+                                {r.title} ({r.shortTitle})
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <span className="text-xs px-2 py-0.5 rounded bg-zinc-800 border border-zinc-700 text-zinc-300">
+                            {roleDef?.title || p.role}
+                          </span>
+                        )}
                       </td>
                       <td className="px-4 py-2.5">
-                        {grp ? (
+                        {isAdmin ? (
+                          <select
+                            value={groups.some((g) => g.id === p.groupId) ? (p.groupId || 'bench') : 'bench'}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              onMoveParticipant(p.id, val === 'bench' ? null : val);
+                            }}
+                            className="bg-zinc-950 border border-zinc-750 text-zinc-200 text-xs rounded px-2 py-1 font-medium focus:outline-none focus:border-zinc-500 cursor-pointer hover:bg-zinc-900"
+                            title="Переместить в съёмочную группу или резерв"
+                          >
+                            <option value="bench">Резерв</option>
+                            {[...groups]
+                              .sort((a, b) => (a.number || 0) - (b.number || 0))
+                              .map((g) => (
+                                <option key={g.id} value={g.id}>
+                                  {g.name}
+                                </option>
+                              ))}
+                          </select>
+                        ) : grp ? (
                           <span className="text-xs text-zinc-300">{grp.name}</span>
                         ) : p.role === 'actor' ? (
                           <span className="text-xs text-emerald-400 font-medium">Актёрский пул (свободный)</span>
@@ -569,9 +612,10 @@ const MemberRow: React.FC<MemberRowProps> = ({
   isBench,
 }) => {
   const roleDef = ROLES[member.role];
+  const isGroupActive = !isBench && !!member.groupId && groups.some((g) => g.id === member.groupId);
 
   // Check outbound (this member avoids other)
-  const outboundAvoided = !isBench && member.groupId
+  const outboundAvoided = isGroupActive
     ? allParticipants.filter(
         (other) =>
           other.groupId === member.groupId &&
@@ -582,7 +626,7 @@ const MemberRow: React.FC<MemberRowProps> = ({
     : [];
 
   // Check inbound (other member avoids this member, but this member does not avoid other)
-  const inboundAvoided = !isBench && member.groupId
+  const inboundAvoided = isGroupActive
     ? allParticipants.filter(
         (other) =>
           other.groupId === member.groupId &&
@@ -593,7 +637,7 @@ const MemberRow: React.FC<MemberRowProps> = ({
     : [];
 
   // Check mutual (both avoid each other)
-  const mutualAvoided = !isBench && member.groupId
+  const mutualAvoided = isGroupActive
     ? allParticipants.filter(
         (other) =>
           other.groupId === member.groupId &&
@@ -638,9 +682,24 @@ const MemberRow: React.FC<MemberRowProps> = ({
           </div>
 
           <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-            <span className="text-xs font-semibold text-zinc-300">
-              {roleDef?.shortTitle || member.role}
-            </span>
+            {isAdmin ? (
+              <select
+                value={member.role}
+                onChange={(e) => onChangeRole(member.id, e.target.value as RoleType)}
+                className="bg-zinc-900 border border-zinc-750 text-zinc-200 text-[11px] rounded px-1.5 py-0.5 font-semibold focus:outline-none focus:border-zinc-500 cursor-pointer hover:bg-zinc-850"
+                title="Быстрая смена роли участника (куратор)"
+              >
+                {Object.entries(ROLES).map(([key, r]) => (
+                  <option key={key} value={key}>
+                    {r.shortTitle} — {r.title}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <span className="text-xs font-semibold text-zinc-300">
+                {roleDef?.shortTitle || member.role}
+              </span>
+            )}
             <span
               title="Роль официально закреплена куратором"
               className="text-[10px] px-1.5 py-0.2 rounded bg-zinc-900 border border-zinc-750 text-emerald-400 font-mono"
@@ -740,7 +799,7 @@ const MemberRow: React.FC<MemberRowProps> = ({
 
           {/* Quick move dropdown */}
           <select
-            value={member.groupId || 'bench'}
+            value={groups.some((g) => g.id === member.groupId) ? (member.groupId || 'bench') : 'bench'}
             onChange={(e) => {
               const val = e.target.value;
               onMoveParticipant(member.id, val === 'bench' ? null : val);
@@ -753,11 +812,13 @@ const MemberRow: React.FC<MemberRowProps> = ({
             title="Переместить в другую группу"
           >
             <option value="bench">Резерв</option>
-            {groups.map((g) => (
-              <option key={g.id} value={g.id}>
-                {g.name}
-              </option>
-            ))}
+            {[...groups]
+              .sort((a, b) => (a.number || 0) - (b.number || 0))
+              .map((g: FilmGroup) => (
+                <option key={g.id} value={g.id}>
+                  {g.name}
+                </option>
+              ))}
           </select>
         </div>
       )}

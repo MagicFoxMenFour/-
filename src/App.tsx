@@ -75,6 +75,7 @@ import {
   setCuratorUnlocked,
   getParticipantPin,
   setParticipantPin,
+  generateRandomPin,
 } from './services/accessControl';
 import { ROLES } from './data/roles';
 
@@ -85,21 +86,9 @@ export default function App() {
     if (saved) {
       try {
         const parsed: FilmGroup[] = JSON.parse(saved);
-        const hasOldTitles =
-          Array.isArray(parsed) &&
-          parsed.some(
-            (g) =>
-              g.projectTitle === 'Тени старого вокзала' ||
-              g.projectTitle === 'Вне зоны видимости' ||
-              g.projectTitle === 'Город за стеклом' ||
-              g.projectTitle === 'Сигнал из прошлого' ||
-              g.projectTitle === 'Северный маяк'
-          );
-        if (hasOldTitles) {
-          localStorage.setItem('cinelab_groups_v5', JSON.stringify(INITIAL_GROUPS));
-          return INITIAL_GROUPS;
+        if (Array.isArray(parsed)) {
+          return parsed;
         }
-        return parsed;
       } catch {
         return INITIAL_GROUPS;
       }
@@ -231,24 +220,11 @@ export default function App() {
     const unsubscribe = subscribeToCinelabData(
       ({ groups: remoteGroups, participants: remoteParticipants, tasks: remoteTasks, hasRemoteData }) => {
         if (hasRemoteData) {
-          if (remoteGroups && remoteGroups.length > 0) {
-            const hasOldTitles = remoteGroups.some(
-              (g) =>
-                g.projectTitle === 'Тени старого вокзала' ||
-                g.projectTitle === 'Вне зоны видимости' ||
-                g.projectTitle === 'Город за стеклом' ||
-                g.projectTitle === 'Сигнал из прошлого' ||
-                g.projectTitle === 'Северный маяк'
-            );
-            if (hasOldTitles) {
-              setGroups(INITIAL_GROUPS);
-              localStorage.setItem('cinelab_groups_v5', JSON.stringify(INITIAL_GROUPS));
-              localStorage.setItem('cinelab_groups_v4', JSON.stringify(INITIAL_GROUPS));
-            } else {
-              setGroups(remoteGroups);
-              localStorage.setItem('cinelab_groups_v5', JSON.stringify(remoteGroups));
-              localStorage.setItem('cinelab_groups_v4', JSON.stringify(remoteGroups));
-            }
+          if (remoteGroups) {
+            const sortedGroups = [...remoteGroups].sort((a, b) => (a.number || 0) - (b.number || 0));
+            setGroups(sortedGroups);
+            localStorage.setItem('cinelab_groups_v5', JSON.stringify(sortedGroups));
+            localStorage.setItem('cinelab_groups_v4', JSON.stringify(sortedGroups));
           }
           if (remoteParticipants && remoteParticipants.length > 0) {
             const normalized = remoteParticipants.map((p, idx) => {
@@ -262,6 +238,10 @@ export default function App() {
             });
             setParticipants(normalized);
             localStorage.setItem('cinelab_participants_v4', JSON.stringify(normalized));
+            setSelectedMember((current) => {
+              const matched = normalized.find((p) => p.id === current?.id);
+              return matched || current;
+            });
           }
           if (remoteTasks) {
             const hasOldTasks =
@@ -466,35 +446,43 @@ export default function App() {
   };
 
   // Move participant
-  const handleMoveParticipant = (participantId: string, newGroupId: string | null) => {
-    let updatedParticipant: Participant | undefined;
-    setParticipants((prev) =>
-      prev.map((p) => {
-        if (p.id === participantId) {
-          updatedParticipant = { ...p, groupId: newGroupId };
-          return updatedParticipant;
-        }
-        return p;
-      })
-    );
-    if (updatedParticipant) {
-      syncSaveParticipant(updatedParticipant);
+  const handleMoveParticipant = (participantId: string, rawNewGroupId: string | null) => {
+    const newGroupId = (!rawNewGroupId || rawNewGroupId === 'bench') ? null : rawNewGroupId;
+    const existing = participants.find((item) => item.id === participantId);
+    if (!existing) return;
+
+    const updatedParticipant: Participant = { ...existing, groupId: newGroupId };
+
+    setParticipants((prev) => {
+      const next = prev.map((p) => (p.id === participantId ? updatedParticipant : p));
+      try {
+        localStorage.setItem('cinelab_participants_v4', JSON.stringify(next));
+      } catch (e) {
+        console.warn('Local storage write warning:', e);
+      }
+      return next;
+    });
+    if (selectedMember?.id === participantId) {
+      setSelectedMember(updatedParticipant);
     }
-    const p = participants.find((item) => item.id === participantId);
+
+    // Persist immediately to cloud Firestore
+    syncSaveParticipant(updatedParticipant);
+
     const targetGroup = groups.find((g) => g.id === newGroupId);
     
     logAuditAction({
-      actorName: userRole === 'admin' ? 'Главный продюсер' : selectedMember.name,
+      actorName: userRole === 'admin' ? 'Главный продюсер (Куратор)' : selectedMember.name,
       actorRole: userRole,
       actionType: 'member_move',
-      targetTitle: p?.name || 'Участник',
+      targetTitle: existing.name || 'Участник',
       details: targetGroup ? `Назначен(а) в группу «${targetGroup.name}»` : 'Переведен(а) в резерв лаборатории (скамейка)',
       groupId: newGroupId,
     });
     setAuditLogs(getAuditLogs());
 
     showToast(
-      `${p?.name || 'Участник'} перемещен в ${
+      `${existing.name || 'Участник'} перемещен(а) в ${
         targetGroup ? targetGroup.name : 'резерв'
       }`
     );
@@ -502,36 +490,46 @@ export default function App() {
 
   // Change role
   const handleChangeRole = (participantId: string, newRole: RoleType) => {
-    let updatedParticipant: Participant | undefined;
-    setParticipants((prev) =>
-      prev.map((p) => {
-        if (p.id === participantId) {
-          updatedParticipant = { ...p, role: newRole };
-          return updatedParticipant;
-        }
-        return p;
-      })
-    );
-    if (updatedParticipant) {
-      syncSaveParticipant(updatedParticipant);
+    const existing = participants.find((item) => item.id === participantId);
+    if (!existing) return;
+
+    const updatedParticipant: Participant = { ...existing, role: newRole };
+
+    setParticipants((prev) => {
+      const next = prev.map((p) => (p.id === participantId ? updatedParticipant : p));
+      try {
+        localStorage.setItem('cinelab_participants_v4', JSON.stringify(next));
+      } catch (e) {
+        console.warn('Local storage write warning:', e);
+      }
+      return next;
+    });
+    if (selectedMember?.id === participantId) {
+      setSelectedMember(updatedParticipant);
     }
-    const p = participants.find((item) => item.id === participantId);
+
+    // Persist immediately to cloud Firestore
+    syncSaveParticipant(updatedParticipant);
+
     logAuditAction({
-      actorName: userRole === 'admin' ? 'Главный продюсер' : selectedMember.name,
+      actorName: userRole === 'admin' ? 'Главный продюсер (Куратор)' : selectedMember.name,
       actorRole: userRole,
       actionType: 'role_change',
-      targetTitle: p?.name || 'Участник',
-      details: `Смена амплуа / роли на «${newRole}»`,
+      targetTitle: existing.name || 'Участник',
+      details: `Смена амплуа / роли на «${ROLES[newRole]?.shortTitle || newRole}»`,
     });
     setAuditLogs(getAuditLogs());
-    showToast('Роль участника обновлена');
+    showToast(`Роль участника ${existing.name} обновлена на «${ROLES[newRole]?.shortTitle || newRole}»`);
   };
 
   // Edit Group handler
   const handleSaveGroup = (updatedGroup: FilmGroup) => {
-    setGroups((prev) =>
-      prev.map((g) => (g.id === updatedGroup.id ? updatedGroup : g))
-    );
+    setGroups((prev) => {
+      const nextGroups = prev.map((g) => (g.id === updatedGroup.id ? updatedGroup : g));
+      localStorage.setItem('cinelab_groups_v5', JSON.stringify(nextGroups));
+      localStorage.setItem('cinelab_groups_v4', JSON.stringify(nextGroups));
+      return nextGroups;
+    });
     syncSaveGroup(updatedGroup);
     logAuditAction({
       actorName: userRole === 'admin' ? 'Главный продюсер (Куратор)' : selectedMember.name,
@@ -551,12 +549,21 @@ export default function App() {
       p.groupId === groupId ? { ...p, groupId: null } : p
     );
     setParticipants(updatedParticipantsList);
-    setGroups((prev) => prev.filter((g) => g.id !== groupId));
+    try {
+      localStorage.setItem('cinelab_participants_v4', JSON.stringify(updatedParticipantsList));
+    } catch {}
+
+    setGroups((prev) => {
+      const nextGroups = prev.filter((g) => g.id !== groupId);
+      localStorage.setItem('cinelab_groups_v5', JSON.stringify(nextGroups));
+      localStorage.setItem('cinelab_groups_v4', JSON.stringify(nextGroups));
+      return nextGroups;
+    });
 
     syncDeleteGroup(groupId);
-    updatedParticipantsList
-      .filter((p) => p.groupId === null)
-      .forEach((p) => syncSaveParticipant(p));
+    participants
+      .filter((p) => p.groupId === groupId)
+      .forEach((p) => syncSaveParticipant({ ...p, groupId: null }));
 
     logAuditAction({
       actorName: userRole === 'admin' ? 'Главный продюсер (Куратор)' : selectedMember.name,
@@ -572,19 +579,28 @@ export default function App() {
 
   // Edit Participant handler
   const handleSaveParticipant = (updatedParticipant: Participant) => {
-    setParticipants((prev) =>
-      prev.map((p) => (p.id === updatedParticipant.id ? updatedParticipant : p))
-    );
-    if (selectedMember.id === updatedParticipant.id) {
+    setParticipants((prev) => {
+      const next = prev.map((p) => (p.id === updatedParticipant.id ? updatedParticipant : p));
+      try {
+        localStorage.setItem('cinelab_participants_v4', JSON.stringify(next));
+      } catch (e) {
+        console.warn('Local storage write warning:', e);
+      }
+      return next;
+    });
+    if (selectedMember?.id === updatedParticipant.id) {
       setSelectedMember(updatedParticipant);
     }
     syncSaveParticipant(updatedParticipant);
+
     logAuditAction({
       actorName: userRole === 'admin' ? 'Главный продюсер (Куратор)' : selectedMember.name,
       actorRole: userRole,
       actionType: 'profile_update',
       targetTitle: updatedParticipant.name,
-      details: `Куратор сохранил профиль участника: роль «${updatedParticipant.role}», группа «${updatedParticipant.groupId || 'Резерв'}»`,
+      details: `Куратор сохранил профиль участника: роль «${ROLES[updatedParticipant.role]?.shortTitle || updatedParticipant.role}», группа «${
+        groups.find((g) => g.id === updatedParticipant.groupId)?.name || 'Резерв'
+      }»`,
       groupId: updatedParticipant.groupId,
     });
     showToast(`Данные участника ${updatedParticipant.name} сохранены`);
@@ -593,7 +609,13 @@ export default function App() {
   // Delete Participant handler
   const handleDeleteParticipant = (participantId: string) => {
     const p = participants.find((item) => item.id === participantId);
-    setParticipants((prev) => prev.filter((p) => p.id !== participantId));
+    setParticipants((prev) => {
+      const next = prev.filter((p) => p.id !== participantId);
+      try {
+        localStorage.setItem('cinelab_participants_v4', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
     setTasks((prev) => prev.filter((t) => t.assignedToId !== participantId));
     syncDeleteParticipant(participantId);
     logAuditAction({
@@ -611,34 +633,36 @@ export default function App() {
   const handleUpdateParticipantPin = (participantId: string, newPin: string) => {
     const cleanPin = newPin.trim();
     setParticipantPin(participantId, cleanPin);
-    let updated: Participant | undefined;
-    setParticipants((prev) =>
-      prev.map((p) => {
-        if (p.id === participantId) {
-          updated = { ...p, pinCode: cleanPin };
-          return updated;
-        }
-        return p;
-      })
-    );
-    if (selectedMember.id === participantId && updated) {
+    const existing = participants.find((item) => item.id === participantId);
+    if (!existing) return;
+
+    const updated: Participant = { ...existing, pinCode: cleanPin };
+    setParticipants((prev) => {
+      const next = prev.map((p) => (p.id === participantId ? updated : p));
+      try {
+        localStorage.setItem('cinelab_participants_v4', JSON.stringify(next));
+      } catch (e) {
+        console.warn('Local storage write warning:', e);
+      }
+      return next;
+    });
+    if (selectedMember?.id === participantId) {
       setSelectedMember(updated);
     }
-    if (updated) {
-      syncSaveParticipant(updated);
-      logAuditAction({
-        actorName: userRole === 'admin' ? 'Главный продюсер (Куратор)' : selectedMember.name,
-        actorRole: userRole,
-        actionType: 'profile_update',
-        targetTitle: updated.name,
-        details:
-          userRole === 'admin'
-            ? `Куратор обновил PIN-код доступа (${cleanPin})`
-            : 'Участник сменил персональный PIN-код кабинета',
-        groupId: updated.groupId,
-      });
-      showToast(`PIN-код для ${(updated as Participant).name} обновлен (${cleanPin})`);
-    }
+    syncSaveParticipant(updated);
+
+    logAuditAction({
+      actorName: userRole === 'admin' ? 'Главный продюсер (Куратор)' : selectedMember.name,
+      actorRole: userRole,
+      actionType: 'profile_update',
+      targetTitle: updated.name,
+      details:
+        userRole === 'admin'
+          ? `Куратор обновил PIN-код доступа (${cleanPin})`
+          : 'Участник сменил персональный PIN-код кабинета',
+      groupId: updated.groupId,
+    });
+    showToast(`PIN-код для ${updated.name} обновлен (${cleanPin})`);
   };
 
   // Edit Task handler
@@ -676,27 +700,33 @@ export default function App() {
 
   // VK update
   const handleUpdateMemberVk = (participantId: string, vkId: string, vkUrl: string) => {
-    let updated: Participant | undefined;
-    setParticipants((prev) =>
-      prev.map((p) => {
-        if (p.id === participantId) {
-          updated = { ...p, vkId, vkUrl };
-          return updated;
-        }
-        return p;
-      })
-    );
-    if (updated) {
-      syncSaveParticipant(updated);
-      logAuditAction({
-        actorName: userRole === 'admin' ? 'Главный продюсер (Куратор)' : selectedMember.name,
-        actorRole: userRole,
-        actionType: 'profile_update',
-        targetTitle: updated.name,
-        details: `Обновлен VK профиль: id «${vkId}» (${vkUrl || 'ссылка'})`,
-        groupId: updated.groupId,
-      });
+    const existing = participants.find((item) => item.id === participantId);
+    if (!existing) return;
+
+    const updated: Participant = { ...existing, vkId, vkUrl };
+    setParticipants((prev) => {
+      const next = prev.map((p) => (p.id === participantId ? updated : p));
+      try {
+        localStorage.setItem('cinelab_participants_v4', JSON.stringify(next));
+      } catch (e) {
+        console.warn('Local storage write warning:', e);
+      }
+      return next;
+    });
+    if (selectedMember?.id === participantId) {
+      setSelectedMember(updated);
     }
+
+    syncSaveParticipant(updated);
+
+    logAuditAction({
+      actorName: userRole === 'admin' ? 'Главный продюсер (Куратор)' : selectedMember.name,
+      actorRole: userRole,
+      actionType: 'profile_update',
+      targetTitle: updated.name,
+      details: `Обновлен VK профиль: id «${vkId}» (${vkUrl || 'ссылка'})`,
+      groupId: updated.groupId,
+    });
     showToast('VK профиль обновлен');
   };
 
@@ -707,66 +737,75 @@ export default function App() {
     avoidedWithIds: string[] = [],
     desiredRoles?: RoleType[]
   ) => {
-    let updated: Participant | undefined;
-    setParticipants((prev) =>
-      prev.map((p) => {
-        if (p.id === participantId) {
-          updated = {
-            ...p,
-            preferredWithIds,
-            avoidedWithIds,
-            ...(desiredRoles !== undefined ? { desiredRoles } : {}),
-          };
-          return updated;
-        }
-        return p;
-      })
-    );
-    if (updated) {
-      syncSaveParticipant(updated);
+    const existing = participants.find((item) => item.id === participantId);
+    if (!existing) return;
+
+    const updated: Participant = {
+      ...existing,
+      preferredWithIds,
+      avoidedWithIds,
+      ...(desiredRoles !== undefined ? { desiredRoles } : {}),
+    };
+
+    setParticipants((prev) => {
+      const next = prev.map((p) => (p.id === participantId ? updated : p));
+      try {
+        localStorage.setItem('cinelab_participants_v4', JSON.stringify(next));
+      } catch (e) {
+        console.warn('Local storage write warning:', e);
+      }
+      return next;
+    });
+    if (selectedMember?.id === participantId) {
       setSelectedMember(updated);
-      logAuditAction({
-        actorName: userRole === 'admin' ? 'Главный продюсер (Куратор)' : selectedMember.name,
-        actorRole: userRole,
-        actionType: 'stop_list_change',
-        targetTitle: updated.name,
-        details: `Обновлены предпочтения команды: Желаемые коллеги (${preferredWithIds.length}), Стоп-лист (${avoidedWithIds.length})`,
-        groupId: updated.groupId,
-      });
     }
+
+    syncSaveParticipant(updated);
+
+    logAuditAction({
+      actorName: userRole === 'admin' ? 'Главный продюсер (Куратор)' : selectedMember.name,
+      actorRole: userRole,
+      actionType: 'stop_list_change',
+      targetTitle: updated.name,
+      details: `Обновлены предпочтения команды: Желаемые коллеги (${preferredWithIds.length}), Стоп-лист (${avoidedWithIds.length})`,
+      groupId: updated.groupId,
+    });
     showToast('Предпочтения обновлены и сохранены в облаке');
   };
 
   // Participant skills update handler (accessible by both participant and admin)
   const handleUpdateParticipantSkills = (participantId: string, skills: string[]) => {
-    let updated: Participant | undefined;
-    setParticipants((prev) =>
-      prev.map((p) => {
-        if (p.id === participantId) {
-          updated = { ...p, skills };
-          return updated;
-        }
-        return p;
-      })
-    );
-    if (selectedMember.id === participantId && updated) {
+    const existing = participants.find((item) => item.id === participantId);
+    if (!existing) return;
+
+    const updated: Participant = { ...existing, skills };
+    setParticipants((prev) => {
+      const next = prev.map((p) => (p.id === participantId ? updated : p));
+      try {
+        localStorage.setItem('cinelab_participants_v4', JSON.stringify(next));
+      } catch (e) {
+        console.warn('Local storage write warning:', e);
+      }
+      return next;
+    });
+    if (selectedMember?.id === participantId) {
       setSelectedMember(updated);
     }
-    if (updated) {
-      syncSaveParticipant(updated);
-      logAuditAction({
-        actorName: userRole === 'admin' ? 'Главный продюсер (Куратор)' : selectedMember.name,
-        actorRole: userRole,
-        actionType: 'profile_update',
-        targetTitle: updated.name,
-        details:
-          skills.length > 0
-            ? `Обновлены особые умения (${skills.length}): ${skills.join(', ')}`
-            : 'Особые умения очищены',
-        groupId: updated.groupId,
-      });
-      showToast(`Особые умения сохранены (${skills.length})`);
-    }
+
+    syncSaveParticipant(updated);
+
+    logAuditAction({
+      actorName: userRole === 'admin' ? 'Главный продюсер (Куратор)' : selectedMember.name,
+      actorRole: userRole,
+      actionType: 'profile_update',
+      targetTitle: updated.name,
+      details:
+        skills.length > 0
+          ? `Обновлены особые умения (${skills.length}): ${skills.join(', ')}`
+          : 'Особые умения очищены',
+      groupId: updated.groupId,
+    });
+    showToast(`Особые умения сохранены (${skills.length})`);
   };
 
   // Clear all stop-lists across all participants in the laboratory
@@ -796,31 +835,34 @@ export default function App() {
 
   // Remove avoid restriction between two participants (mutual or single)
   const handleRemoveAvoidLink = (p1Id: string, p2Id: string) => {
-    let u1: Participant | undefined;
-    let u2: Participant | undefined;
+    const p1 = participants.find((p) => p.id === p1Id);
+    const p2 = participants.find((p) => p.id === p2Id);
+
+    const u1: Participant | undefined = p1
+      ? { ...p1, avoidedWithIds: (p1.avoidedWithIds || []).filter((id) => id !== p2Id) }
+      : undefined;
+    const u2: Participant | undefined = p2
+      ? { ...p2, avoidedWithIds: (p2.avoidedWithIds || []).filter((id) => id !== p1Id) }
+      : undefined;
 
     setParticipants((prev) =>
       prev.map((p) => {
-        if (p.id === p1Id) {
-          u1 = {
-            ...p,
-            avoidedWithIds: (p.avoidedWithIds || []).filter((id) => id !== p2Id),
-          };
-          return u1;
-        }
-        if (p.id === p2Id) {
-          u2 = {
-            ...p,
-            avoidedWithIds: (p.avoidedWithIds || []).filter((id) => id !== p1Id),
-          };
-          return u2;
-        }
+        if (p.id === p1Id && u1) return u1;
+        if (p.id === p2Id && u2) return u2;
         return p;
       })
     );
 
     if (u1) syncSaveParticipant(u1);
     if (u2) syncSaveParticipant(u2);
+    try {
+      const updatedList = participants.map((p) => {
+        if (p.id === p1Id && u1) return u1;
+        if (p.id === p2Id && u2) return u2;
+        return p;
+      });
+      localStorage.setItem('cinelab_participants_v4', JSON.stringify(updatedList));
+    } catch {}
 
     if (selectedMember && (selectedMember.id === p1Id || selectedMember.id === p2Id)) {
       const active = (selectedMember.id === p1Id ? u1 : u2) || selectedMember;
@@ -830,7 +872,7 @@ export default function App() {
       actorName: userRole === 'admin' ? 'Главный продюсер (Куратор)' : selectedMember.name,
       actorRole: userRole,
       actionType: 'stop_list_change',
-      targetTitle: `${u1?.name || p1Id} & ${u2?.name || p2Id}`,
+      targetTitle: `${p1?.name || p1Id} & ${p2?.name || p2Id}`,
       details: 'Снято взаимное ограничение стоп-листа',
     });
     showToast('Ограничение стоп-листа успешно снято');
@@ -839,23 +881,21 @@ export default function App() {
   // Task status update
   const handleUpdateTaskStatus = (taskId: string, status: TaskStatus) => {
     const t = tasks.find((item) => item.id === taskId);
+    if (!t) return;
+
+    const updated: Task = { ...t, status };
     setTasks((prev) =>
-      prev.map((task) => {
-        if (task.id === taskId) {
-          const updated = { ...task, status };
-          syncSaveTask(updated);
-          return updated;
-        }
-        return task;
-      })
+      prev.map((task) => (task.id === taskId ? updated : task))
     );
+    syncSaveTask(updated);
+
     logAuditAction({
       actorName: userRole === 'admin' ? 'Главный продюсер (Куратор)' : selectedMember.name,
       actorRole: userRole,
       actionType: 'task_change',
-      targetTitle: t?.title || 'Задача',
+      targetTitle: t.title || 'Задача',
       details: `Статус задачи изменен на «${status}»`,
-      groupId: t?.groupId,
+      groupId: t.groupId,
     });
   };
 
@@ -866,55 +906,56 @@ export default function App() {
     notes: string
   ) => {
     const t = tasks.find((item) => item.id === taskId);
+    if (!t) return;
+
+    const updated: Task = {
+      ...t,
+      deliverableUrl,
+      deliverableNotes: notes,
+    };
     setTasks((prev) =>
-      prev.map((task) => {
-        if (task.id === taskId) {
-          const updated = {
-            ...task,
-            deliverableUrl,
-            deliverableNotes: notes,
-          };
-          syncSaveTask(updated);
-          return updated;
-        }
-        return task;
-      })
+      prev.map((task) => (task.id === taskId ? updated : task))
     );
+    syncSaveTask(updated);
+
     logAuditAction({
       actorName: userRole === 'admin' ? 'Главный продюсер (Куратор)' : selectedMember.name,
       actorRole: userRole,
       actionType: 'task_change',
-      targetTitle: t?.title || 'Задача',
+      targetTitle: t.title || 'Задача',
       details: `Прикреплен материал / ссылка на сдачу: ${deliverableUrl}`,
-      groupId: t?.groupId,
+      groupId: t.groupId,
     });
     showToast('Материал успешно прикреплен');
   };
 
   const handleUpdateGroupStage = (groupId: string, stage: ProductionStage) => {
     const g = groups.find((item) => item.id === groupId);
+    if (!g) return;
+
+    const updated: FilmGroup = { ...g, stage };
     setGroups((prev) =>
-      prev.map((group) => {
-        if (group.id === groupId) {
-          const updated = { ...group, stage };
-          syncSaveGroup(updated);
-          return updated;
-        }
-        return group;
-      })
+      prev.map((group) => (group.id === groupId ? updated : group))
     );
+    syncSaveGroup(updated);
+
     logAuditAction({
       actorName: userRole === 'admin' ? 'Главный продюсер (Куратор)' : selectedMember.name,
       actorRole: userRole,
       actionType: 'group_change',
-      targetTitle: g?.name || 'Съёмочная группа',
+      targetTitle: g.name || 'Съёмочная группа',
       details: `Стадия производства переведена на «${stage}»`,
       groupId,
     });
   };
 
   const handleAddGroup = (newGroup: FilmGroup) => {
-    setGroups((prev) => [...prev, newGroup]);
+    setGroups((prev) => {
+      const nextGroups = [...prev, newGroup];
+      localStorage.setItem('cinelab_groups_v5', JSON.stringify(nextGroups));
+      localStorage.setItem('cinelab_groups_v4', JSON.stringify(nextGroups));
+      return nextGroups;
+    });
     syncSaveGroup(newGroup);
     logAuditAction({
       actorName: 'Главный продюсер (Куратор)',
@@ -936,11 +977,18 @@ export default function App() {
       setParticipantPin(safeId, finalParticipant.pinCode || generateRandomPin());
     }
 
-    setParticipants((prev) => [
-      ...prev.filter((p) => p.id !== finalParticipant.id),
-      finalParticipant,
-    ]);
+    setParticipants((prev) => {
+      const next = [
+        ...prev.filter((p) => p.id !== finalParticipant.id),
+        finalParticipant,
+      ];
+      try {
+        localStorage.setItem('cinelab_participants_v4', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
     syncSaveParticipant(finalParticipant);
+
     logAuditAction({
       actorName: 'Главный продюсер (Куратор)',
       actorRole: 'admin',
@@ -980,6 +1028,15 @@ export default function App() {
     const { updatedParticipants, changesSummary } = runAutoBalance(participants, groups);
     setParticipants(updatedParticipants);
     setIsConflictModalOpen(false);
+
+    // Save all changed participants to cloud and localStorage so real-time sync doesn't revert them
+    if (changesSummary.length > 0) {
+      updatedParticipants.forEach((p) => syncSaveParticipant(p));
+      try {
+        localStorage.setItem('cinelab_participants_v4', JSON.stringify(updatedParticipants));
+      } catch {}
+    }
+
     logAuditAction({
       actorName: 'Главный продюсер (Куратор)',
       actorRole: 'admin',
@@ -1310,9 +1367,14 @@ export default function App() {
           participants={participants}
           initialTab={dispatchInitialTab}
           onSaveGroupChatUrl={(groupId, url) => {
-            setGroups((prev) =>
-              prev.map((g) => (g.id === groupId ? { ...g, vkChatUrl: url } : g))
-            );
+            const existing = groups.find((g) => g.id === groupId);
+            if (existing) {
+              const updated = { ...existing, vkChatUrl: url };
+              setGroups((prev) =>
+                prev.map((g) => (g.id === groupId ? updated : g))
+              );
+              syncSaveGroup(updated);
+            }
             showToast(`Ссылка на беседу «${dispatchingGroup.name}» сохранена`);
           }}
         />

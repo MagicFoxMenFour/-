@@ -37,7 +37,7 @@ export const EditGroupModal: React.FC<EditGroupModalProps> = ({
   if (!isOpen || !group) return null;
 
   const groupMembers = participants.filter((p) => p.groupId === group.id);
-  const benchMembers = participants.filter((p) => !p.groupId);
+  const benchMembers = participants.filter((p) => !p.groupId && p.role !== 'actor');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

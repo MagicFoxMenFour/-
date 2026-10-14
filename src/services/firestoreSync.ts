@@ -1,6 +1,7 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import {
+  initializeFirestore,
   getFirestore,
   collection,
   doc,
@@ -18,10 +19,42 @@ import { FilmGroup, Participant, Task, AuditLogEntry } from '../types';
 export const firebaseApp = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 export const auth = getAuth(firebaseApp);
 
-// Initialize Firestore
-// We use the database ID configured or default
+// Initialize Firestore with ignoreUndefinedProperties: true
+// This is critical: without this, any field with value undefined throws an error
+// and breaks real-time synchronization, causing edits to roll back.
 const dbId = (firebaseConfig as any).firestoreDatabaseId || '(default)';
-export const db = getFirestore(firebaseApp, dbId);
+export const db = (() => {
+  try {
+    return initializeFirestore(firebaseApp, {
+      ignoreUndefinedProperties: true,
+    }, dbId);
+  } catch {
+    return getFirestore(firebaseApp, dbId);
+  }
+})();
+
+/**
+ * Deeply sanitizes an object for Firestore by removing any undefined properties
+ * and ensuring nested arrays and objects are clean and Firestore-safe.
+ */
+export function sanitizeForFirestore<T>(data: T): T {
+  if (data === null || data === undefined) {
+    return null as any;
+  }
+  if (Array.isArray(data)) {
+    return data.map((item) => sanitizeForFirestore(item)) as any;
+  }
+  if (typeof data === 'object') {
+    const clean: Record<string, any> = {};
+    for (const [key, val] of Object.entries(data as Record<string, any>)) {
+      if (val !== undefined) {
+        clean[key] = sanitizeForFirestore(val);
+      }
+    }
+    return clean as any;
+  }
+  return data;
+}
 
 // Test connection on boot as required
 export async function testFirestoreConnection(): Promise<boolean> {
@@ -120,7 +153,9 @@ export function subscribeToCinelabData(
 }
 
 /**
- * Initialize cloud database with initial/local dataset if the cloud is currently empty.
+ * Initialize cloud database ONLY on brand new empty database.
+ * Never restores or overrides groups if data already exists in the cloud,
+ * allowing flexible 1, 5, 20 or any dynamic number of groups.
  */
 export async function seedCloudDatabaseIfEmpty(
   initialGroups: FilmGroup[],
@@ -128,14 +163,15 @@ export async function seedCloudDatabaseIfEmpty(
   initialTasks: Task[]
 ): Promise<boolean> {
   try {
-    const snap = await getDocs(collection(db, GROUPS_COL));
-    if (snap.empty) {
+    const snapGroups = await getDocs(collection(db, GROUPS_COL));
+    const snapParticipants = await getDocs(collection(db, PARTICIPANTS_COL));
+    if (snapGroups.empty && snapParticipants.empty) {
       await saveEntireStateToCloud(initialGroups, initialParticipants, initialTasks);
       return true;
     }
     return false;
   } catch (err) {
-    console.error('Failed to seed cloud database:', err);
+    console.error('Failed to check cloud database:', err);
     return false;
   }
 }
@@ -151,15 +187,21 @@ export async function saveEntireStateToCloud(
   const batch = writeBatch(db);
 
   groups.forEach((g) => {
-    batch.set(doc(db, GROUPS_COL, g.id), g);
+    batch.set(doc(db, GROUPS_COL, g.id), sanitizeForFirestore(g));
   });
 
   participants.forEach((p) => {
-    batch.set(doc(db, PARTICIPANTS_COL, p.id), p);
+    batch.set(doc(db, PARTICIPANTS_COL, p.id), sanitizeForFirestore({
+      ...p,
+      groupId: p.groupId !== undefined ? p.groupId : null,
+      preferredWithIds: p.preferredWithIds || [],
+      avoidedWithIds: p.avoidedWithIds || [],
+      skills: p.skills || [],
+    }));
   });
 
   tasks.forEach((t) => {
-    batch.set(doc(db, TASKS_COL, t.id), t);
+    batch.set(doc(db, TASKS_COL, t.id), sanitizeForFirestore(t));
   });
 
   await batch.commit();
@@ -170,7 +212,8 @@ export async function saveEntireStateToCloud(
  */
 export async function syncSaveGroup(group: FilmGroup): Promise<void> {
   try {
-    await setDoc(doc(db, GROUPS_COL, group.id), group);
+    const clean = sanitizeForFirestore(group);
+    await setDoc(doc(db, GROUPS_COL, group.id), clean);
   } catch (e) {
     console.error('syncSaveGroup error:', e);
   }
@@ -186,7 +229,14 @@ export async function syncDeleteGroup(groupId: string): Promise<void> {
 
 export async function syncSaveParticipant(participant: Participant): Promise<void> {
   try {
-    await setDoc(doc(db, PARTICIPANTS_COL, participant.id), participant);
+    const clean = sanitizeForFirestore({
+      ...participant,
+      groupId: participant.groupId !== undefined ? participant.groupId : null,
+      preferredWithIds: participant.preferredWithIds || [],
+      avoidedWithIds: participant.avoidedWithIds || [],
+      skills: participant.skills || [],
+    });
+    await setDoc(doc(db, PARTICIPANTS_COL, participant.id), clean);
   } catch (e) {
     console.error('syncSaveParticipant error:', e);
   }
@@ -202,7 +252,8 @@ export async function syncDeleteParticipant(participantId: string): Promise<void
 
 export async function syncSaveTask(task: Task): Promise<void> {
   try {
-    await setDoc(doc(db, TASKS_COL, task.id), task);
+    const clean = sanitizeForFirestore(task);
+    await setDoc(doc(db, TASKS_COL, task.id), clean);
   } catch (e) {
     console.error('syncSaveTask error:', e);
   }
@@ -235,9 +286,15 @@ export async function syncResetDatabase(
   tSnap.docs.forEach((d) => batch.delete(d.ref));
 
   // Add fresh
-  groups.forEach((g) => batch.set(doc(db, GROUPS_COL, g.id), g));
-  participants.forEach((p) => batch.set(doc(db, PARTICIPANTS_COL, p.id), p));
-  tasks.forEach((t) => batch.set(doc(db, TASKS_COL, t.id), t));
+  groups.forEach((g) => batch.set(doc(db, GROUPS_COL, g.id), sanitizeForFirestore(g)));
+  participants.forEach((p) => batch.set(doc(db, PARTICIPANTS_COL, p.id), sanitizeForFirestore({
+    ...p,
+    groupId: p.groupId !== undefined ? p.groupId : null,
+    preferredWithIds: p.preferredWithIds || [],
+    avoidedWithIds: p.avoidedWithIds || [],
+    skills: p.skills || [],
+  })));
+  tasks.forEach((t) => batch.set(doc(db, TASKS_COL, t.id), sanitizeForFirestore(t)));
 
   await batch.commit();
 }

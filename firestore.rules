@@ -1,10 +1,7 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Default-deny
-    match /{document=**} {
-      allow read, write: if false;
-    }
+    // Allow read & write for authorized curators / lab users
 
     // Kinolaboratory root documents & collections
     // Allow read & write for authorized curators / lab users

@@ -210,14 +210,14 @@ export const EditParticipantModal: React.FC<EditParticipantModalProps> = ({
                 Съёмочная группа:
               </label>
               <select
-                value={groupId || 'bench'}
+                value={groups.some((g) => g.id === groupId) ? (groupId || 'bench') : 'bench'}
                 onChange={(e) =>
                   setGroupId(e.target.value === 'bench' ? null : e.target.value)
                 }
                 className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-zinc-500"
               >
                 <option value="bench">Резерв (скамейка запасных)</option>
-                {groups.map((g) => (
+                {[...groups].sort((a, b) => (a.number || 0) - (b.number || 0)).map((g) => (
                   <option key={g.id} value={g.id}>
                     {g.name}
                   </option>
