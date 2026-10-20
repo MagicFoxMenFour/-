@@ -74,12 +74,12 @@ export interface Participant {
   preferredWithIds: string[]; // participant IDs they prefer to work with
   avoidedWithIds?: string[]; // participant IDs they definitely DO NOT want to work with (стоп-лист / исключения)
   skills?: string[];
-  notes?: string;
+  notes?: string | null;
   pinCode?: string; // Личный PIN-код для защиты кабинета участника (по умолчанию 1234)
   isDeleted?: boolean; // Флаг мягкого удаления (находится в Корзине)
-  deletedAt?: string; // ISO дата перемещения в корзину
-  deletedBy?: string; // Кто удалил (Куратор / Администратор)
-  deletedReason?: string;
+  deletedAt?: string | null; // ISO дата перемещения в корзину
+  deletedBy?: string | null; // Кто удалил (Куратор / Администратор)
+  deletedReason?: string | null;
 }
 
 export interface DatabaseBackup {

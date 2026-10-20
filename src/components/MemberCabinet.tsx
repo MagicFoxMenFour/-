@@ -40,6 +40,7 @@ import {
   Trash2,
   Download,
   Wrench,
+  FileText,
 } from 'lucide-react';
 import {
   FilmGroup,
@@ -62,6 +63,7 @@ import {
   updateBookInRole,
   deleteBookFromRole,
   resetBooksForRole,
+  clearBooksForRole,
   subscribeToRoleBooks,
 } from '../services/booksService';
 import { triggerBookDownload } from '../services/bookStorage';
@@ -1869,17 +1871,20 @@ export const MemberCabinet: React.FC<MemberCabinetProps> = ({
                   <div className="flex items-center justify-between pb-1">
                     <span className="text-xs text-indigo-300 font-semibold">Управление книгами цеха:</span>
                     <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => {
-                          if (confirm('Восстановить исходный список книг для этого цеха?')) {
-                            resetBooksForRole(viewedRoleType);
-                          }
-                        }}
-                        title="Сбросить список книг этого цеха к базовым"
-                        className="p-1.5 text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-800 transition-colors"
-                      >
-                        <RotateCcw className="w-3.5 h-3.5" />
-                      </button>
+                      {cabinetRoleBooks && cabinetRoleBooks.length > 0 && (
+                        <button
+                          onClick={() => {
+                            if (confirm(`Очистить все книги цеха «${activeRoleDef.title}»?`)) {
+                              clearBooksForRole(viewedRoleType);
+                            }
+                          }}
+                          title="Очистить полку этого цеха"
+                          className="flex items-center gap-1.5 px-2.5 py-1.5 bg-zinc-850 hover:bg-rose-950/60 text-zinc-300 hover:text-rose-300 border border-zinc-750 hover:border-rose-700/60 rounded-lg text-xs font-semibold transition-colors shadow-sm"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>Очистить полку</span>
+                        </button>
+                      )}
                       <button
                         onClick={() => {
                           setEditingCabinetBook(null);
@@ -2014,8 +2019,12 @@ export const MemberCabinet: React.FC<MemberCabinetProps> = ({
                       </div>
                     ))
                   ) : (
-                    <div className="col-span-3 text-center text-xs text-zinc-500 p-6 bg-zinc-950 rounded-xl border border-zinc-800">
-                      Список рекомендуемой литературы пока пуст.
+                    <div className="col-span-3 text-center text-xs text-zinc-400 p-8 bg-zinc-950 rounded-xl border border-zinc-850 space-y-2">
+                      <BookMarked className="w-8 h-8 text-indigo-400/60 mx-auto" />
+                      <div className="font-semibold text-zinc-300">Книжная полка цеха пока пуста</div>
+                      <p className="text-zinc-500 max-w-md mx-auto">
+                        Куратор или преподаватель может добавить профильную литературу и методические пособия для цеха «{activeRoleDef.title}» по кнопке «+ Добавить книгу».
+                      </p>
                     </div>
                   )}
                 </div>
@@ -2027,7 +2036,7 @@ export const MemberCabinet: React.FC<MemberCabinetProps> = ({
           {guidelineTab === 'deliverables' && (
             <div className="space-y-4">
               <div className="text-xs text-zinc-400">
-                Каждый участник цеха обязан своевременно предоставить следующие материалы в личном кабинете для согласования с кураторами Кинолаборатории:
+                Каждый участник цеха предоставляет материалы для согласования с кураторами Кинолаборатории:
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
@@ -2059,8 +2068,12 @@ export const MemberCabinet: React.FC<MemberCabinetProps> = ({
                     </div>
                   ))
                 ) : (
-                  <div className="p-6 text-center text-xs text-zinc-500 col-span-2">
-                    Сдаваемые материалы не определены для данной роли.
+                  <div className="col-span-2 text-center text-xs text-zinc-400 p-8 bg-zinc-950 rounded-xl border border-zinc-850 space-y-2">
+                    <FileText className="w-8 h-8 text-blue-400/60 mx-auto" />
+                    <div className="font-semibold text-zinc-300">Сдаваемые материалы пока не заданы</div>
+                    <p className="text-zinc-500 max-w-md mx-auto">
+                      Официальный список обязательных артефактов и форматов сдачи для цеха «{activeRoleDef.title}» будет опубликован куратором перед началом производства.
+                    </p>
                   </div>
                 )}
               </div>

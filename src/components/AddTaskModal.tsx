@@ -9,6 +9,7 @@ interface AddTaskModalProps {
   groups: FilmGroup[];
   participants: Participant[];
   onAddTask: (task: Task) => void;
+  initialGroupId?: string;
 }
 
 export const AddTaskModal: React.FC<AddTaskModalProps> = ({
@@ -17,16 +18,23 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
   groups,
   participants,
   onAddTask,
+  initialGroupId,
 }) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [groupId, setGroupId] = useState<string>(groups[0]?.id || '');
+  const [groupId, setGroupId] = useState<string>(initialGroupId || groups[0]?.id || '');
   const [assignedToId, setAssignedToId] = useState<string>('');
   const [role, setRole] = useState<RoleType>('director');
   const [stage, setStage] = useState<ProductionStage>('pre_production');
   const [deadline, setDeadline] = useState(
     new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10)
   );
+
+  React.useEffect(() => {
+    if (initialGroupId) {
+      setGroupId(initialGroupId);
+    }
+  }, [initialGroupId, isOpen]);
 
   if (!isOpen) return null;
 

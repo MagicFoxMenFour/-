@@ -280,6 +280,19 @@ export async function syncDeleteTask(taskId: string): Promise<void> {
   }
 }
 
+export async function syncClearAllTasks(): Promise<void> {
+  try {
+    const snap = await getDocs(collection(db, TASKS_COL));
+    if (!snap.empty) {
+      const batch = writeBatch(db);
+      snap.docs.forEach((d) => batch.delete(d.ref));
+      await batch.commit();
+    }
+  } catch (e) {
+    console.error('syncClearAllTasks error:', e);
+  }
+}
+
 export async function syncResetDatabase(
   groups: FilmGroup[],
   participants: Participant[],

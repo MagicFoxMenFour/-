@@ -7,8 +7,15 @@ import { RoleType, RoleBookRecommendation } from '../types';
 import { db } from './firestoreSync';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 
-const BOOKS_STORAGE_KEY = 'cinelab_role_books_v2';
+const BOOKS_STORAGE_KEY = 'cinelab_role_books_v3';
 const listeners: Array<() => void> = [];
+
+// Proactively clean legacy book keys from older sessions
+try {
+  localStorage.removeItem('cinelab_role_books');
+  localStorage.removeItem('cinelab_role_books_v1');
+  localStorage.removeItem('cinelab_role_books_v2');
+} catch {}
 
 export function subscribeToRoleBooks(listener: () => void): () => void {
   listeners.push(listener);
@@ -31,6 +38,35 @@ function notifyListeners() {
 // Get initial defaults from ROLES
 export function getDefaultBooksForRole(role: RoleType): RoleBookRecommendation[] {
   return ROLES[role]?.recommendedBooks ? [...ROLES[role].recommendedBooks] : [];
+}
+
+// Clear all books across all roles
+export function clearAllRoleBooks(): void {
+  const empty: Record<RoleType, RoleBookRecommendation[]> = {} as any;
+  const roleKeys = Object.keys(ROLES) as RoleType[];
+  for (const role of roleKeys) {
+    empty[role] = [];
+  }
+  try {
+    localStorage.setItem(BOOKS_STORAGE_KEY, JSON.stringify(empty));
+    localStorage.removeItem('cinelab_role_books_v2');
+  } catch (e) {
+    console.error('Failed to clear books from localStorage:', e);
+  }
+
+  try {
+    const docRef = doc(db, 'settings', 'role_books');
+    setDoc(docRef, empty).catch((err) => {
+      console.warn('Firestore books sync warning:', err);
+    });
+  } catch (err) {}
+
+  notifyListeners();
+}
+
+// Clear books for a single role
+export function clearBooksForRole(role: RoleType): void {
+  saveBooksForRole(role, []);
 }
 
 // Load all books from localStorage, fallback to defaults

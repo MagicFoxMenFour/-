@@ -39,6 +39,7 @@ import {
   updateBookInRole,
   deleteBookFromRole,
   resetBooksForRole,
+  clearBooksForRole,
   subscribeToRoleBooks,
 } from '../services/booksService';
 import { triggerBookDownload } from '../services/bookStorage';
@@ -591,17 +592,20 @@ export const RoleGuidelinesView: React.FC<RoleGuidelinesViewProps> = ({
 
                   {userRole === 'admin' && (
                     <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => {
-                          if (confirm('Восстановить исходный базовый список книг для этого цеха?')) {
-                            resetBooksForRole(selectedRoleType);
-                          }
-                        }}
-                        title="Сбросить список книг этого цеха к базовым"
-                        className="p-1.5 text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-800 transition-colors"
-                      >
-                        <RotateCcw className="w-3.5 h-3.5" />
-                      </button>
+                      {roleBooks && roleBooks.length > 0 && (
+                        <button
+                          onClick={() => {
+                            if (confirm(`Очистить все книги цеха «${activeRole.title}»?`)) {
+                              clearBooksForRole(selectedRoleType);
+                            }
+                          }}
+                          title="Очистить список книг этого цеха"
+                          className="flex items-center gap-1.5 px-2.5 py-1.5 bg-zinc-850 hover:bg-rose-950/60 text-zinc-300 hover:text-rose-300 border border-zinc-750 hover:border-rose-700/60 rounded-lg text-xs font-semibold transition-colors shadow-sm"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>Очистить</span>
+                        </button>
+                      )}
                       <button
                         onClick={() => {
                           setEditingBook(null);

@@ -37,5 +37,13 @@ service cloud.firestore {
     match /backups/{backupId} {
       allow read, write: if true;
     }
+
+    match /settings/{settingId} {
+      allow read, write: if true;
+    }
+
+    match /media/{mediaId} {
+      allow read, write: if true;
+    }
   }
 }

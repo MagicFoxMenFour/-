@@ -12,6 +12,7 @@ import {
   BookOpen,
   KeyRound,
   ShieldCheck,
+  Calendar,
 } from 'lucide-react';
 
 import {
@@ -47,6 +48,7 @@ import {
   syncSaveTask,
   syncDeleteTask,
   syncResetDatabase,
+  syncClearAllTasks,
   testFirestoreConnection,
   subscribeToAuditLogs,
   seedAuditLogsIfEmpty,
@@ -59,6 +61,9 @@ import { GroupBoard } from './components/GroupBoard';
 import { MemberCabinet } from './components/MemberCabinet';
 import { RoleGuidelinesView } from './components/RoleGuidelinesView';
 import { ParticipantPinsView } from './components/ParticipantPinsView';
+import { ProductionKPPView } from './components/ProductionKPPView';
+import { AddTaskModal } from './components/AddTaskModal';
+import { EditTaskModal } from './components/EditTaskModal';
 import { ConflictModal } from './components/ConflictModal';
 import { WorkspaceModal } from './components/WorkspaceModal';
 import { AddGroupModal } from './components/AddGroupModal';
@@ -126,23 +131,23 @@ export default function App() {
   });
 
   const [tasks, setTasks] = useState<Task[]>(() => {
-    const saved = localStorage.getItem('cinelab_tasks_v5') || localStorage.getItem('cinelab_tasks_v4');
+    try {
+      localStorage.removeItem('cinelab_tasks_v1');
+      localStorage.removeItem('cinelab_tasks_v2');
+      localStorage.removeItem('cinelab_tasks_v3');
+      localStorage.removeItem('cinelab_tasks_v4');
+      localStorage.removeItem('cinelab_tasks_v5');
+    } catch {}
+    const saved = localStorage.getItem('cinelab_tasks_v6');
     if (saved) {
       try {
         const parsed: Task[] = JSON.parse(saved);
-        if (
-          Array.isArray(parsed) &&
-          parsed.some((t) => t.id === 'tsk-101' || t.title.includes('Режиссёрская экспликация'))
-        ) {
-          localStorage.setItem('cinelab_tasks_v5', JSON.stringify(INITIAL_TASKS));
-          return INITIAL_TASKS;
-        }
-        return parsed;
+        if (Array.isArray(parsed)) return parsed;
       } catch {
-        return INITIAL_TASKS;
+        return [];
       }
     }
-    return INITIAL_TASKS;
+    return [];
   });
 
   // User Role & Permissions state (Admin vs Participant)
@@ -160,8 +165,10 @@ export default function App() {
 
   // Media Library Materials state
   const [materials, setMaterials] = useState<MediaAsset[]>(() => {
-    const saved = localStorage.getItem('cinelab_materials_v1');
-    return saved ? JSON.parse(saved) : INITIAL_MEDIA_ASSETS;
+    try {
+      localStorage.removeItem('cinelab_materials_v1');
+    } catch {}
+    return [];
   });
 
   // Audit Logs state
@@ -169,7 +176,7 @@ export default function App() {
 
   // UI state
   const [currentView, setCurrentView] = useState<'moderator' | 'member' | 'guidelines'>('moderator');
-  const [moderatorTab, setModeratorTab] = useState<'teams' | 'guidelines' | 'pins'>('teams');
+  const [moderatorTab, setModeratorTab] = useState<'teams' | 'kpp' | 'guidelines' | 'pins'>('teams');
   const [activeGuidelineRole, setActiveGuidelineRole] = useState<RoleType>('director');
   const [selectedMember, setSelectedMember] = useState<Participant>(() => INITIAL_PARTICIPANTS[0]);
 
@@ -197,6 +204,7 @@ export default function App() {
   const [addParticipantInitialRole, setAddParticipantInitialRole] = useState<RoleType>('director');
   const [addParticipantInitialGroupId, setAddParticipantInitialGroupId] = useState<string>('bench');
   const [isAddTaskModalOpen, setIsAddTaskModalOpen] = useState(false);
+  const [addTaskInitialGroupId, setAddTaskInitialGroupId] = useState<string>('grp-1');
   const [isDeviceSyncOpen, setIsDeviceSyncOpen] = useState(false);
   const [isCloudSynced, setIsCloudSynced] = useState(false);
 
@@ -251,16 +259,11 @@ export default function App() {
             });
           }
           if (remoteTasks) {
-            const hasLegacyTasks = remoteTasks.some(
-              (t) => t.id === 'tsk-101' || t.title.includes('Режиссёрская экспликация')
-            );
-            if (hasLegacyTasks) {
-              setTasks(INITIAL_TASKS);
-              localStorage.setItem('cinelab_tasks_v5', JSON.stringify(INITIAL_TASKS));
-            } else {
-              setTasks(remoteTasks);
-              localStorage.setItem('cinelab_tasks_v5', JSON.stringify(remoteTasks));
-            }
+            setTasks(remoteTasks);
+            localStorage.setItem('cinelab_tasks_v6', JSON.stringify(remoteTasks));
+          } else {
+            setTasks([]);
+            localStorage.setItem('cinelab_tasks_v6', JSON.stringify([]));
           }
           setIsCloudSynced(true);
         }
@@ -322,7 +325,7 @@ export default function App() {
   }, [participants]);
 
   useEffect(() => {
-    localStorage.setItem('cinelab_tasks_v5', JSON.stringify(tasks));
+    localStorage.setItem('cinelab_tasks_v6', JSON.stringify(tasks));
   }, [tasks]);
 
   useEffect(() => {
@@ -995,6 +998,20 @@ export default function App() {
     showToast('Материал успешно прикреплен');
   };
 
+  const handleClearKPP = async () => {
+    setTasks([]);
+    localStorage.setItem('cinelab_tasks_v6', JSON.stringify([]));
+    await syncClearAllTasks();
+    logAuditAction({
+      actorName: userRole === 'admin' ? 'Главный продюсер (Куратор)' : selectedMember.name,
+      actorRole: userRole,
+      actionType: 'task_change',
+      targetTitle: 'Производственный КПП',
+      details: 'Все задачи в Производственном КПП очищены.',
+    });
+    showToast('Производственный КПП полностью очищен');
+  };
+
   const handleUpdateGroupStage = (groupId: string, stage: ProductionStage) => {
     const g = groups.find((item) => item.id === groupId);
     if (!g) return;
@@ -1310,6 +1327,10 @@ export default function App() {
           setSecurityCenterInitialTab('diagnostics');
           setIsSecurityCenterOpen(true);
         }}
+        onOpenKPP={() => {
+          setCurrentView('moderator');
+          setModeratorTab('kpp');
+        }}
         groupsCount={groups.length}
       />
 
@@ -1339,6 +1360,19 @@ export default function App() {
                 >
                   <Film className="w-4 h-4" />
                   <span>Съёмочные группы ({groups.length})</span>
+                </button>
+
+                <button
+                  onClick={() => setModeratorTab('kpp')}
+                  className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-sm font-semibold whitespace-nowrap transition-colors ${
+                    moderatorTab === 'kpp'
+                      ? 'bg-amber-950/80 text-amber-300 border border-amber-800/80 shadow-sm'
+                      : 'text-zinc-400 hover:text-amber-300 hover:bg-zinc-900'
+                  }`}
+                  title="Единый Календарно-Постановочный План: контроль этапов и сдачи пилотов"
+                >
+                  <Calendar className="w-4 h-4 text-amber-400" />
+                  <span>Производственный КПП ({tasks.length})</span>
                 </button>
 
                 <button
@@ -1428,6 +1462,26 @@ export default function App() {
                   else setDispatchInitialTab('call_sheet');
                 }}
                 onRemoveAvoidLink={handleRemoveAvoidLink}
+              />
+            ) : moderatorTab === 'kpp' ? (
+              <ProductionKPPView
+                groups={groups}
+                participants={participants.filter((p) => !p.isDeleted)}
+                tasks={tasks}
+                isAdmin={userRole === 'admin'}
+                onUpdateTaskStatus={handleUpdateTaskStatus}
+                onUpdateTaskDetails={handleSaveTask}
+                onUpdateGroupStage={handleUpdateGroupStage}
+                onOpenAddTaskModal={(groupId) => {
+                  setAddTaskInitialGroupId(groupId || 'grp-1');
+                  setIsAddTaskModalOpen(true);
+                }}
+                onClearKPP={handleClearKPP}
+                onSelectMemberForCabinet={(m) => {
+                  setSelectedMember(m);
+                  setCurrentView('member');
+                }}
+                showToast={showToast}
               />
             ) : moderatorTab === 'guidelines' ? (
               <RoleGuidelinesView
@@ -1645,6 +1699,29 @@ export default function App() {
           onConfirm={handleResetData}
           groupsCount={groups.length}
           participantsCount={participants.length}
+        />
+      )}
+
+      {/* Add Task Modal */}
+      <AddTaskModal
+        isOpen={isAddTaskModalOpen}
+        onClose={() => setIsAddTaskModalOpen(false)}
+        groups={groups}
+        participants={participants.filter((p) => !p.isDeleted)}
+        onAddTask={handleAddTask}
+        initialGroupId={addTaskInitialGroupId}
+      />
+
+      {/* Edit Task Modal */}
+      {editingTask && (
+        <EditTaskModal
+          isOpen={true}
+          onClose={() => setEditingTask(null)}
+          task={editingTask}
+          groups={groups}
+          participants={participants.filter((p) => !p.isDeleted)}
+          onSaveTask={handleSaveTask}
+          onDeleteTask={handleDeleteTask}
         />
       )}
     </div>

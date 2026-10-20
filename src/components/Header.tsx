@@ -19,6 +19,7 @@ import {
   X,
   LogIn,
   KeyRound,
+  Calendar,
 } from 'lucide-react';
 import { ConflictItem, Participant, UserRole } from '../types';
 import { User } from 'firebase/auth';
@@ -44,6 +45,7 @@ interface HeaderProps {
   onAutoBalance: () => void;
   onOpenParticipantPins?: () => void;
   onOpenSecurityCenter?: () => void;
+  onOpenKPP?: () => void;
   groupsCount?: number;
 }
 
@@ -66,6 +68,7 @@ export const Header: React.FC<HeaderProps> = ({
   onAutoBalance,
   onOpenParticipantPins,
   onOpenSecurityCenter,
+  onOpenKPP,
   groupsCount,
 }) => {
   const [isToolsOpen, setIsToolsOpen] = useState(false);
@@ -364,6 +367,22 @@ export const Header: React.FC<HeaderProps> = ({
                       </div>
                     </button>
 
+                    {onOpenKPP && (
+                      <button
+                        onClick={() => {
+                          onOpenKPP();
+                          setIsToolsOpen(false);
+                        }}
+                        className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-amber-300 hover:text-amber-200 hover:bg-amber-950/40 transition-colors text-left"
+                      >
+                        <Calendar className="w-4 h-4 text-amber-400 shrink-0" />
+                        <div>
+                          <div className="font-semibold">Производственный КПП</div>
+                          <div className="text-[10px] text-amber-400/80">График и сдача 5 пилотов</div>
+                        </div>
+                      </button>
+                    )}
+
                     {onOpenParticipantPins && (
                       <button
                         onClick={() => {
@@ -643,6 +662,22 @@ export const Header: React.FC<HeaderProps> = ({
                     </div>
                     <span className="font-mono text-zinc-500">→</span>
                   </button>
+
+                  {onOpenKPP && (
+                    <button
+                      onClick={() => {
+                        onOpenKPP();
+                        setIsMobileMenuOpen(false);
+                      }}
+                      className="w-full flex items-center justify-between p-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-850 border border-zinc-800 text-xs text-amber-300"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Calendar className="w-4 h-4 text-amber-400" />
+                        <span>Производственный КПП (5 групп)</span>
+                      </div>
+                      <span className="font-mono text-amber-400">→</span>
+                    </button>
+                  )}
 
                   {onOpenSecurityCenter && (
                     <button
