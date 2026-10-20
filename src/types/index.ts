@@ -76,6 +76,26 @@ export interface Participant {
   skills?: string[];
   notes?: string;
   pinCode?: string; // Личный PIN-код для защиты кабинета участника (по умолчанию 1234)
+  isDeleted?: boolean; // Флаг мягкого удаления (находится в Корзине)
+  deletedAt?: string; // ISO дата перемещения в корзину
+  deletedBy?: string; // Кто удалил (Куратор / Администратор)
+  deletedReason?: string;
+}
+
+export interface DatabaseBackup {
+  id: string; // e.g. "backup-2026-10-18T18-45-00"
+  timestamp: string; // ISO string
+  label: string; // "Перед расформированием группы", "Ручной бэкап", "Авто-бэкап"
+  trigger: 'manual' | 'pre_reset' | 'pre_delete' | 'auto_snapshot' | 'auto_balance';
+  groupsCount: number;
+  participantsCount: number;
+  tasksCount: number;
+  creator: string;
+  data: {
+    groups: FilmGroup[];
+    participants: Participant[];
+    tasks: Task[];
+  };
 }
 
 export type ProductionStage = 'development' | 'pre_production' | 'production' | 'post_production';

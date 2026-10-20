@@ -72,6 +72,22 @@
         "groupId": { "type": "string" }
       },
       "required": ["id", "timestamp", "actorName", "actorRole", "actionType", "targetTitle", "details"]
+    },
+    "DatabaseBackup": {
+      "title": "DatabaseBackup",
+      "description": "Timestamped system snapshot for instant rollback and disaster recovery",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "timestamp": { "type": "string" },
+        "label": { "type": "string" },
+        "trigger": { "type": "string" },
+        "groupsCount": { "type": "number" },
+        "participantsCount": { "type": "number" },
+        "tasksCount": { "type": "number" },
+        "creator": { "type": "string" }
+      },
+      "required": ["id", "timestamp", "label", "trigger"]
     }
   },
   "firestore": {
@@ -90,6 +106,10 @@
     "/audit_logs/{logId}": {
       "schema": "AuditLogEntry",
       "description": "Collection of real-time audit log events across all devices"
+    },
+    "/cinelab_backups/{backupId}": {
+      "schema": "DatabaseBackup",
+      "description": "Collection of full database snapshots for recovery"
     }
   }
 }

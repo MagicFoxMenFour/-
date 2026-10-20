@@ -43,6 +43,8 @@ interface HeaderProps {
   isLoggingIn: boolean;
   onAutoBalance: () => void;
   onOpenParticipantPins?: () => void;
+  onOpenSecurityCenter?: () => void;
+  groupsCount?: number;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -63,6 +65,8 @@ export const Header: React.FC<HeaderProps> = ({
   isLoggingIn,
   onAutoBalance,
   onOpenParticipantPins,
+  onOpenSecurityCenter,
+  groupsCount,
 }) => {
   const [isToolsOpen, setIsToolsOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -109,7 +113,7 @@ export const Header: React.FC<HeaderProps> = ({
                 КИНОЛАБОРАТОРИЯ
               </span>
               <span className="hidden sm:inline-block px-1.5 py-0.5 text-[10px] text-zinc-400 bg-zinc-900 border border-zinc-800 rounded font-mono shrink-0">
-                7 групп
+                {groupsCount !== undefined ? `${groupsCount} групп` : 'кино'}
               </span>
             </div>
           </div>
@@ -229,6 +233,18 @@ export const Header: React.FC<HeaderProps> = ({
               >
                 <History className="w-3.5 h-3.5 text-amber-400" />
                 <span>Лог</span>
+              </button>
+            )}
+
+            {/* Security Center & Backups Button (Admin Only) */}
+            {userRole === 'admin' && onOpenSecurityCenter && (
+              <button
+                onClick={onOpenSecurityCenter}
+                title="Центр безопасности: диагностика систем, точки восстановления, защита от сброса и корзина участников"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 bg-zinc-900 hover:bg-zinc-800 border border-zinc-750 text-zinc-300 hover:text-white rounded-lg text-xs font-medium transition-colors"
+              >
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                <span className="hidden lg:inline">Безопасность</span>
               </button>
             )}
 
@@ -360,6 +376,22 @@ export const Header: React.FC<HeaderProps> = ({
                         <div>
                           <div className="font-semibold">Коды доступа (PIN)</div>
                           <div className="text-[10px] text-emerald-400/80">Реестр и восстановление PIN</div>
+                        </div>
+                      </button>
+                    )}
+
+                    {onOpenSecurityCenter && (
+                      <button
+                        onClick={() => {
+                          onOpenSecurityCenter();
+                          setIsToolsOpen(false);
+                        }}
+                        className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-emerald-300 hover:text-emerald-200 hover:bg-emerald-950/40 transition-colors text-left"
+                      >
+                        <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+                        <div>
+                          <div className="font-semibold">Центр безопасности</div>
+                          <div className="text-[10px] text-emerald-400/80">Диагностика, снимки и Корзина</div>
                         </div>
                       </button>
                     )}
@@ -611,6 +643,22 @@ export const Header: React.FC<HeaderProps> = ({
                     </div>
                     <span className="font-mono text-zinc-500">→</span>
                   </button>
+
+                  {onOpenSecurityCenter && (
+                    <button
+                      onClick={() => {
+                        onOpenSecurityCenter();
+                        setIsMobileMenuOpen(false);
+                      }}
+                      className="w-full flex items-center justify-between p-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-850 border border-zinc-800 text-xs text-emerald-300"
+                    >
+                      <div className="flex items-center gap-2">
+                        <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                        <span>Центр безопасности и бэкапов</span>
+                      </div>
+                      <span className="font-mono text-emerald-400">→</span>
+                    </button>
+                  )}
 
                   {/* Excel Export */}
               <button

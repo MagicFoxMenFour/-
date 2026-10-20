@@ -165,7 +165,12 @@ export async function seedCloudDatabaseIfEmpty(
   try {
     const snapGroups = await getDocs(collection(db, GROUPS_COL));
     const snapParticipants = await getDocs(collection(db, PARTICIPANTS_COL));
-    if (snapGroups.empty && snapParticipants.empty) {
+    const snapAudit = await getDocs(collection(db, AUDIT_LOGS_COL));
+    const snapBackups = await getDocs(collection(db, 'cinelab_backups'));
+    
+    // Strict safeguard: if ANY data exists (even just audit logs, participants, actors or backups),
+    // NEVER overwrite or auto-seed the cloud database!
+    if (snapGroups.empty && snapParticipants.empty && snapAudit.empty && snapBackups.empty) {
       await saveEntireStateToCloud(initialGroups, initialParticipants, initialTasks);
       return true;
     }
@@ -197,6 +202,10 @@ export async function saveEntireStateToCloud(
       preferredWithIds: p.preferredWithIds || [],
       avoidedWithIds: p.avoidedWithIds || [],
       skills: p.skills || [],
+      isDeleted: !!p.isDeleted,
+      deletedAt: p.deletedAt || null,
+      deletedBy: p.deletedBy || null,
+      deletedReason: p.deletedReason || null,
     }));
   });
 
@@ -235,6 +244,10 @@ export async function syncSaveParticipant(participant: Participant): Promise<voi
       preferredWithIds: participant.preferredWithIds || [],
       avoidedWithIds: participant.avoidedWithIds || [],
       skills: participant.skills || [],
+      isDeleted: !!participant.isDeleted,
+      deletedAt: participant.deletedAt || null,
+      deletedBy: participant.deletedBy || null,
+      deletedReason: participant.deletedReason || null,
     });
     await setDoc(doc(db, PARTICIPANTS_COL, participant.id), clean);
   } catch (e) {
@@ -272,6 +285,39 @@ export async function syncResetDatabase(
   participants: Participant[],
   tasks: Task[]
 ): Promise<void> {
+  // Capture snapshot of current database state before clearing so it can be completely recovered
+  try {
+    const [existingG, existingP, existingT] = await Promise.all([
+      getDocs(collection(db, GROUPS_COL)),
+      getDocs(collection(db, PARTICIPANTS_COL)),
+      getDocs(collection(db, TASKS_COL)),
+    ]);
+    const prevG = existingG.docs.map((d) => d.data() as FilmGroup);
+    const prevP = existingP.docs.map((d) => d.data() as Participant);
+    const prevT = existingT.docs.map((d) => d.data() as Task);
+    
+    if (prevG.length > 0 || prevP.length > 0) {
+      const backupDocId = `auto_pre_reset_${Date.now()}`;
+      await setDoc(doc(db, 'cinelab_backups', backupDocId), {
+        id: backupDocId,
+        timestamp: new Date().toISOString(),
+        label: 'Автоматический снимок перед сбросом базы',
+        trigger: 'pre_reset',
+        groupsCount: prevG.length,
+        participantsCount: prevP.length,
+        tasksCount: prevT.length,
+        creator: 'Система безопасности (Защита от сброса)',
+        data: {
+          groups: prevG,
+          participants: prevP,
+          tasks: prevT,
+        },
+      });
+    }
+  } catch (backupErr) {
+    console.warn('Pre-reset backup warning:', backupErr);
+  }
+
   const batch = writeBatch(db);
 
   // Clear existing
@@ -293,6 +339,10 @@ export async function syncResetDatabase(
     preferredWithIds: p.preferredWithIds || [],
     avoidedWithIds: p.avoidedWithIds || [],
     skills: p.skills || [],
+    isDeleted: !!p.isDeleted,
+    deletedAt: p.deletedAt || null,
+    deletedBy: p.deletedBy || null,
+    deletedReason: p.deletedReason || null,
   })));
   tasks.forEach((t) => batch.set(doc(db, TASKS_COL, t.id), sanitizeForFirestore(t)));
 

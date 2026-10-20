@@ -65,8 +65,13 @@ export const GroupBoard: React.FC<GroupBoardProps> = ({
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
 
-  // Filter participants
-  const filteredParticipants = participants.filter((p) => {
+  // Filter participants (excluding soft-deleted participants in Trash)
+  const activeParticipants = useMemo(
+    () => participants.filter((p) => !p.isDeleted),
+    [participants]
+  );
+
+  const filteredParticipants = activeParticipants.filter((p) => {
     const matchesSearch =
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -82,7 +87,7 @@ export const GroupBoard: React.FC<GroupBoardProps> = ({
   const benchParticipants = filteredParticipants.filter(
     (p) => (!p.groupId || !groups.some((g) => g.id === p.groupId)) && p.role !== 'actor'
   );
-  const actorParticipants = participants.filter((p) => p.role === 'actor');
+  const actorParticipants = activeParticipants.filter((p) => p.role === 'actor');
 
   // Groups sorted logically by number
   const sortedGroups = useMemo(

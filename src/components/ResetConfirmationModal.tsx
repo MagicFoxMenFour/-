@@ -16,6 +16,7 @@ export const ResetConfirmationModal: React.FC<ResetConfirmationModalProps> = ({
   groupsCount,
   participantsCount,
 }) => {
+  const [confirmText, setConfirmText] = React.useState('');
   if (!isOpen) return null;
 
   return (
@@ -70,6 +71,20 @@ export const ResetConfirmationModal: React.FC<ResetConfirmationModalProps> = ({
           </ul>
         </div>
 
+        {/* Confirmation input guard */}
+        <div className="space-y-2">
+          <label className="block text-xs font-semibold text-zinc-300">
+            Для подтверждения сброса введите слово <span className="text-rose-400 font-mono font-bold bg-rose-950 px-1.5 py-0.5 rounded border border-rose-900">СБРОСИТЬ</span>:
+          </label>
+          <input
+            type="text"
+            value={confirmText}
+            onChange={(e) => setConfirmText(e.target.value)}
+            placeholder="Введите СБРОСИТЬ..."
+            className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-3 py-2 text-xs text-white uppercase font-mono tracking-wider focus:outline-none focus:border-rose-500"
+          />
+        </div>
+
         {/* Action Buttons */}
         <div className="flex flex-col-reverse sm:flex-row items-center justify-end gap-2.5 pt-1">
           <button
@@ -82,8 +97,16 @@ export const ResetConfirmationModal: React.FC<ResetConfirmationModalProps> = ({
 
           <button
             type="button"
-            onClick={onConfirm}
-            className="w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-500 shadow-lg shadow-rose-950/60 transition-colors flex items-center justify-center gap-2"
+            disabled={confirmText.trim() !== 'СБРОСИТЬ'}
+            onClick={() => {
+              onConfirm();
+              setConfirmText('');
+            }}
+            className={`w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+              confirmText.trim() === 'СБРОСИТЬ'
+                ? 'bg-rose-600 hover:bg-rose-500 text-white shadow-lg shadow-rose-950/60 cursor-pointer'
+                : 'bg-zinc-800 text-zinc-500 cursor-not-allowed border border-zinc-750'
+            }`}
           >
             <RotateCcw className="w-3.5 h-3.5" />
             <span>Да, сбросить всё</span>

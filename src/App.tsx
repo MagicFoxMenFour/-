@@ -11,6 +11,7 @@ import {
   Sparkles,
   BookOpen,
   KeyRound,
+  ShieldCheck,
 } from 'lucide-react';
 
 import {
@@ -69,6 +70,8 @@ import { DeviceSyncModal } from './components/DeviceSyncModal';
 import { RoleSwitcherModal } from './components/RoleSwitcherModal';
 import { AuditLogModal } from './components/AuditLogModal';
 import { ResetConfirmationModal } from './components/ResetConfirmationModal';
+import { SecurityCenterModal } from './components/SecurityCenterModal';
+import { createDatabaseBackup } from './services/backupService';
 import {
   isCuratorUnlocked,
   isUserAdminEmail,
@@ -129,7 +132,7 @@ export default function App() {
         const parsed: Task[] = JSON.parse(saved);
         if (
           Array.isArray(parsed) &&
-          (parsed.length > 7 || parsed.some((t) => t.id === 'tsk-101' || t.title.includes('Режиссёрская экспликация')))
+          parsed.some((t) => t.id === 'tsk-101' || t.title.includes('Режиссёрская экспликация'))
         ) {
           localStorage.setItem('cinelab_tasks_v5', JSON.stringify(INITIAL_TASKS));
           return INITIAL_TASKS;
@@ -179,6 +182,10 @@ export default function App() {
     'call_sheet' | 'announcement' | 'chat_setup'
   >('call_sheet');
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
+  const [isSecurityCenterOpen, setIsSecurityCenterOpen] = useState(false);
+  const [securityCenterInitialTab, setSecurityCenterInitialTab] = useState<
+    'diagnostics' | 'backups' | 'trash' | 'reset'
+  >('diagnostics');
 
   // Modals state
   const [isRoleSwitcherOpen, setIsRoleSwitcherOpen] = useState(false);
@@ -244,12 +251,10 @@ export default function App() {
             });
           }
           if (remoteTasks) {
-            const hasOldTasks =
-              remoteTasks.length > 7 ||
-              remoteTasks.some(
-                (t) => t.id === 'tsk-101' || t.title.includes('Режиссёрская экспликация')
-              );
-            if (hasOldTasks) {
+            const hasLegacyTasks = remoteTasks.some(
+              (t) => t.id === 'tsk-101' || t.title.includes('Режиссёрская экспликация')
+            );
+            if (hasLegacyTasks) {
               setTasks(INITIAL_TASKS);
               localStorage.setItem('cinelab_tasks_v5', JSON.stringify(INITIAL_TASKS));
             } else {
@@ -606,11 +611,73 @@ export default function App() {
     showToast(`Данные участника ${updatedParticipant.name} сохранены`);
   };
 
-  // Delete Participant handler
+  // Delete Participant handler (Soft Delete into Trash)
   const handleDeleteParticipant = (participantId: string) => {
     const p = participants.find((item) => item.id === participantId);
+    if (!p) return;
+    const trashed: Participant = {
+      ...p,
+      groupId: null, // Free from active group
+      isDeleted: true,
+      deletedAt: new Date().toISOString(),
+      deletedBy: userRole === 'admin' ? 'Главный продюсер (Куратор)' : selectedMember.name,
+      deletedReason: 'Перемещён в Корзину',
+    };
     setParticipants((prev) => {
-      const next = prev.filter((p) => p.id !== participantId);
+      const next = prev.map((item) => (item.id === participantId ? trashed : item));
+      try {
+        localStorage.setItem('cinelab_participants_v4', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+    syncSaveParticipant(trashed);
+    logAuditAction({
+      actorName: userRole === 'admin' ? 'Главный продюсер (Куратор)' : selectedMember.name,
+      actorRole: userRole,
+      actionType: 'member_move',
+      targetTitle: p.name,
+      details: 'Участник перемещён в Корзину лаборатории (сохранён для 1-клик восстановления)',
+      groupId: p.groupId,
+    });
+    showToast(`Участник ${p.name} перемещён в Корзину (можно восстановить в Центре безопасности)`);
+  };
+
+  // Restore participant from Trash back into Reserve
+  const handleRestoreParticipant = (participantId: string) => {
+    const p = participants.find((item) => item.id === participantId);
+    if (!p) return;
+    const restored: Participant = {
+      ...p,
+      isDeleted: false,
+      deletedAt: undefined,
+      deletedBy: undefined,
+      deletedReason: undefined,
+      groupId: null, // returns safely to Reserve
+    };
+    setParticipants((prev) => {
+      const next = prev.map((item) => (item.id === participantId ? restored : item));
+      try {
+        localStorage.setItem('cinelab_participants_v4', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+    syncSaveParticipant(restored);
+    logAuditAction({
+      actorName: 'Главный продюсер (Куратор)',
+      actorRole: 'admin',
+      actionType: 'member_move',
+      targetTitle: p.name,
+      details: 'Участник восстановлен из Корзины на скамейку запасных (в Резерв)',
+      groupId: null,
+    });
+    showToast(`Участник ${p.name} восстановлен в Резерв лаборатории`);
+  };
+
+  // Permanent Delete Participant (from Trash)
+  const handlePermanentDeleteParticipant = (participantId: string) => {
+    const p = participants.find((item) => item.id === participantId);
+    setParticipants((prev) => {
+      const next = prev.filter((item) => item.id !== participantId);
       try {
         localStorage.setItem('cinelab_participants_v4', JSON.stringify(next));
       } catch {}
@@ -619,14 +686,13 @@ export default function App() {
     setTasks((prev) => prev.filter((t) => t.assignedToId !== participantId));
     syncDeleteParticipant(participantId);
     logAuditAction({
-      actorName: userRole === 'admin' ? 'Главный продюсер (Куратор)' : selectedMember.name,
-      actorRole: userRole,
+      actorName: 'Главный продюсер (Куратор)',
+      actorRole: 'admin',
       actionType: 'member_move',
       targetTitle: p?.name || 'Участник',
-      details: 'Участник удален из базы лаборатории',
-      groupId: p?.groupId,
+      details: 'Участник окончательно удалён из базы данных лаборатории',
     });
-    showToast('Участник удален из лаборатории');
+    showToast('Участник окончательно удалён');
   };
 
   // Update participant PIN code handler
@@ -1054,29 +1120,159 @@ export default function App() {
     }
   };
 
-  const handleResetData = () => {
-    if (userRole !== 'admin') {
-      showToast('Доступ запрещен. Только администратор может сбрасывать данные.');
-      setIsResetModalOpen(false);
-      return;
-    }
-    setGroups(INITIAL_GROUPS);
-    setParticipants(INITIAL_PARTICIPANTS);
-    setTasks(INITIAL_TASKS);
-    localStorage.setItem('cinelab_groups_v5', JSON.stringify(INITIAL_GROUPS));
-    localStorage.setItem('cinelab_groups_v4', JSON.stringify(INITIAL_GROUPS));
-    localStorage.setItem('cinelab_participants_v4', JSON.stringify(INITIAL_PARTICIPANTS));
-    localStorage.setItem('cinelab_tasks_v5', JSON.stringify(INITIAL_TASKS));
-    syncResetDatabase(INITIAL_GROUPS, INITIAL_PARTICIPANTS, INITIAL_TASKS);
+  // Restore entire state from a snapshot / backup
+  const handleRestoreState = async (restored: {
+    groups: FilmGroup[];
+    participants: Participant[];
+    tasks: Task[];
+    summary: string;
+  }) => {
+    // 1. Create a safety snapshot of current state before applying restore!
+    await createDatabaseBackup(
+      `Авто-снимок перед восстановлением (${restored.summary.slice(0, 30)})`,
+      'auto_snapshot',
+      { groups, participants, tasks },
+      'Система защиты'
+    );
+
+    // 2. Set memory state
+    setGroups(restored.groups);
+    setParticipants(restored.participants);
+    setTasks(restored.tasks);
+
+    // 3. Local storage
+    try {
+      localStorage.setItem('cinelab_groups_v5', JSON.stringify(restored.groups));
+      localStorage.setItem('cinelab_groups_v4', JSON.stringify(restored.groups));
+      localStorage.setItem('cinelab_participants_v4', JSON.stringify(restored.participants));
+      localStorage.setItem('cinelab_tasks_v5', JSON.stringify(restored.tasks));
+    } catch {}
+
+    // 4. Save to Firestore
+    await saveEntireStateToCloud(restored.groups, restored.participants, restored.tasks);
+
     logAuditAction({
       actorName: 'Главный продюсер (Куратор)',
       actorRole: 'admin',
       actionType: 'reset_data',
       targetTitle: 'База данных лаборатории',
-      details: 'Сброс всех групп, участников и задач к эталонному состоянию 7 групп',
+      details: `Выполнен откат базы данных: ${restored.summary}`,
     });
+    showToast(`Откат базы успешно применён: ${restored.summary}`);
+  };
+
+  // Auto repair orphaned participants whose groupId does not exist
+  const handleAutoRepairOrphans = () => {
+    const groupIds = new Set(groups.map((g) => g.id));
+    let repairedCount = 0;
+    const nextParticipants = participants.map((p) => {
+      if (p.groupId && !groupIds.has(p.groupId)) {
+        repairedCount++;
+        const fixed: Participant = { ...p, groupId: null };
+        syncSaveParticipant(fixed);
+        return fixed;
+      }
+      return p;
+    });
+
+    if (repairedCount > 0) {
+      setParticipants(nextParticipants);
+      try {
+        localStorage.setItem('cinelab_participants_v4', JSON.stringify(nextParticipants));
+      } catch {}
+      logAuditAction({
+        actorName: 'Главный продюсер (Куратор)',
+        actorRole: 'admin',
+        actionType: 'auto_balance',
+        targetTitle: 'Целостность базы данных',
+        details: `Автоматически исправлено ${repairedCount} участников с несуществующими группами (переведены в Резерв)`,
+      });
+      showToast(`Исправлено ${repairedCount} участников: переведены в Резерв`);
+    } else {
+      showToast('Ошибок привязок групп не обнаружено');
+    }
+  };
+
+  // Generate missing PIN codes
+  const handleGenerateMissingPins = () => {
+    let generated = 0;
+    const next = participants.map((p) => {
+      if (!p.pinCode || p.pinCode.length < 4) {
+        generated++;
+        const newPin = generateRandomPin();
+        setParticipantPin(p.id, newPin);
+        const fixed = { ...p, pinCode: newPin };
+        syncSaveParticipant(fixed);
+        return fixed;
+      }
+      return p;
+    });
+
+    if (generated > 0) {
+      setParticipants(next);
+      try {
+        localStorage.setItem('cinelab_participants_v4', JSON.stringify(next));
+      } catch {}
+      showToast(`Сгенерированы защитные PIN-коды для ${generated} участников`);
+    } else {
+      showToast('У всех участников уже настроены безопасные PIN-коды');
+    }
+  };
+
+  // Foolproof hard reset handler with automatic pre-reset snapshot and actor retention
+  const handleExecuteHardReset = async (keepActors: boolean) => {
+    if (userRole !== 'admin') {
+      showToast('Доступ запрещен. Только администратор может выполнять сброс.');
+      return;
+    }
+
+    // 1. Automatic backup snapshot before reset
+    await createDatabaseBackup(
+      'Автоматический снимок перед сбросом базы к эталону',
+      'pre_reset',
+      { groups, participants, tasks },
+      'Защита от сброса'
+    );
+
+    let nextParticipants: Participant[] = INITIAL_PARTICIPANTS;
+    if (keepActors) {
+      // Retain actors and custom added participants
+      const customOnes = participants.filter(
+        (p) => p.role === 'actor' || !INITIAL_PARTICIPANTS.some((init) => init.id === p.id)
+      );
+      const preserved = customOnes.map((p) => ({ ...p, groupId: null, isDeleted: false }));
+      const mergedMap = new Map<string, Participant>();
+      INITIAL_PARTICIPANTS.forEach((p) => mergedMap.set(p.id, p));
+      preserved.forEach((p) => mergedMap.set(p.id, p));
+      nextParticipants = Array.from(mergedMap.values());
+    }
+
+    setGroups(INITIAL_GROUPS);
+    setParticipants(nextParticipants);
+    setTasks(INITIAL_TASKS);
+
+    try {
+      localStorage.setItem('cinelab_groups_v5', JSON.stringify(INITIAL_GROUPS));
+      localStorage.setItem('cinelab_groups_v4', JSON.stringify(INITIAL_GROUPS));
+      localStorage.setItem('cinelab_participants_v4', JSON.stringify(nextParticipants));
+      localStorage.setItem('cinelab_tasks_v5', JSON.stringify(INITIAL_TASKS));
+    } catch {}
+
+    await syncResetDatabase(INITIAL_GROUPS, nextParticipants, INITIAL_TASKS);
+
+    logAuditAction({
+      actorName: 'Главный продюсер (Куратор)',
+      actorRole: 'admin',
+      actionType: 'reset_data',
+      targetTitle: 'База данных лаборатории',
+      details: `Выполнен управляемый сброс к эталону 7 групп. Сохранено участников/актёров: ${nextParticipants.length}. Создана точка восстановления`,
+    });
+    showToast('База данных лаборатории возвращена к 7 группам. Создан резервный снимок для отката');
+  };
+
+  const handleResetData = () => {
+    handleExecuteHardReset(true);
     setIsResetModalOpen(false);
-    showToast('Данные лаборатории успешно сброшены к исходным 7 группам');
   };
 
   return (
@@ -1110,6 +1306,11 @@ export default function App() {
           setCurrentView('moderator');
           setModeratorTab('pins');
         }}
+        onOpenSecurityCenter={() => {
+          setSecurityCenterInitialTab('diagnostics');
+          setIsSecurityCenterOpen(true);
+        }}
+        groupsCount={groups.length}
       />
 
       {/* Conflict Bar (Admin Only) */}
@@ -1171,12 +1372,15 @@ export default function App() {
               {userRole === 'admin' && (
                 <div className="flex items-center gap-2 text-xs">
                   <button
-                    onClick={() => setIsResetModalOpen(true)}
-                    title="Восстановить исходные данные лаборатории (требуются права администратора)"
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-rose-300 rounded-lg border border-zinc-800 hover:border-zinc-700 transition-colors"
+                    onClick={() => {
+                      setSecurityCenterInitialTab('diagnostics');
+                      setIsSecurityCenterOpen(true);
+                    }}
+                    title="Центр безопасности: диагностика целостности, точки восстановления, защита от сброса и Корзина"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 text-emerald-400 hover:text-emerald-300 rounded-lg border border-zinc-800 hover:border-emerald-850 transition-colors font-medium shadow-sm"
                   >
-                    <RefreshCw className="w-3.5 h-3.5" />
-                    <span>Сбросить к исходным</span>
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Безопасность и Бэкапы</span>
                   </button>
                 </div>
               )}
@@ -1233,7 +1437,7 @@ export default function App() {
               />
             ) : moderatorTab === 'pins' && userRole === 'admin' ? (
               <ParticipantPinsView
-                participants={participants}
+                participants={participants.filter((p) => !p.isDeleted)}
                 groups={groups}
                 onUpdateParticipantPin={handleUpdateParticipantPin}
                 onSelectMemberForCabinet={(m) => {
@@ -1258,7 +1462,7 @@ export default function App() {
             currentMember={
               participants.find((p) => p.id === selectedMember.id) || selectedMember
             }
-            allParticipants={participants}
+            allParticipants={participants.filter((p) => !p.isDeleted)}
             groups={groups}
             onSelectMember={setSelectedMember}
             onEditParticipant={(p) => setEditingParticipant(p)}
@@ -1338,7 +1542,7 @@ export default function App() {
           isOpen={true}
           onClose={() => setEditingGroup(null)}
           group={editingGroup}
-          participants={participants}
+          participants={participants.filter((p) => !p.isDeleted)}
           onSaveGroup={handleSaveGroup}
           onDeleteGroup={handleDeleteGroup}
           onMoveParticipant={handleMoveParticipant}
@@ -1351,7 +1555,7 @@ export default function App() {
           onClose={() => setEditingParticipant(null)}
           participant={editingParticipant}
           groups={groups}
-          allParticipants={participants}
+          allParticipants={participants.filter((p) => !p.isDeleted)}
           onSaveParticipant={handleSaveParticipant}
           onDeleteParticipant={handleDeleteParticipant}
           onRemoveInboundAvoid={handleRemoveAvoidLink}
@@ -1397,7 +1601,7 @@ export default function App() {
         onClose={() => setIsRoleSwitcherOpen(false)}
         currentRole={userRole}
         selectedParticipant={selectedMember}
-        participants={participants}
+        participants={participants.filter((p) => !p.isDeleted)}
         googleUser={googleUser}
         onGoogleSignIn={handleGoogleSignIn}
         onSelectRole={handleRoleChange}
@@ -1410,6 +1614,26 @@ export default function App() {
           onClose={() => setIsAuditLogOpen(false)}
           logs={auditLogs}
           onClearLogs={handleClearAuditLogs}
+        />
+      )}
+
+      {/* Security Center & Backups Modal */}
+      {userRole === 'admin' && (
+        <SecurityCenterModal
+          isOpen={isSecurityCenterOpen}
+          onClose={() => setIsSecurityCenterOpen(false)}
+          groups={groups}
+          participants={participants}
+          tasks={tasks}
+          isCloudSynced={isCloudSynced}
+          onRestoreState={handleRestoreState}
+          onRestoreParticipant={handleRestoreParticipant}
+          onPermanentDeleteParticipant={handlePermanentDeleteParticipant}
+          onAutoRepairOrphans={handleAutoRepairOrphans}
+          onGenerateMissingPins={handleGenerateMissingPins}
+          onExecuteHardReset={handleExecuteHardReset}
+          showToast={showToast}
+          initialTab={securityCenterInitialTab}
         />
       )}
 

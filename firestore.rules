@@ -29,5 +29,13 @@ service cloud.firestore {
     match /audit_logs/{logId} {
       allow read, write: if true;
     }
+
+    match /cinelab_backups/{backupId} {
+      allow read, write: if true;
+    }
+
+    match /backups/{backupId} {
+      allow read, write: if true;
+    }
   }
 }

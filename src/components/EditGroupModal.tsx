@@ -189,8 +189,10 @@ export const EditGroupModal: React.FC<EditGroupModalProps> = ({
           {/* Footer Actions */}
           <div className="pt-4 border-t border-zinc-800 flex items-center justify-between gap-3">
             {isConfirmingDelete ? (
-              <div className="flex items-center gap-2 bg-red-950/40 border border-red-800/80 p-1.5 rounded-xl text-xs">
-                <span className="text-red-300 font-medium px-2">Расформировать?</span>
+              <div className="flex items-center gap-2 bg-red-950/60 border border-red-800/80 p-1.5 rounded-xl text-xs">
+                <span className="text-red-300 font-medium px-2">
+                  Расформировать? (Участники перейдут в Резерв)
+                </span>
                 <button
                   type="button"
                   onClick={() => {
@@ -199,7 +201,7 @@ export const EditGroupModal: React.FC<EditGroupModalProps> = ({
                   }}
                   className="px-2.5 py-1 bg-red-600 hover:bg-red-500 text-white rounded-lg font-bold"
                 >
-                  Да
+                  Да, расформировать
                 </button>
                 <button
                   type="button"
@@ -214,6 +216,7 @@ export const EditGroupModal: React.FC<EditGroupModalProps> = ({
                 type="button"
                 onClick={() => setIsConfirmingDelete(true)}
                 className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1.5 px-3 py-2 rounded-xl border border-red-500/20 hover:bg-red-500/10 transition-colors"
+                title="Расформировать съёмочную группу. Все её участники перейдут в Резерв и не будут удалены"
               >
                 <Trash2 className="w-4 h-4" />
                 <span>Расформировать группу</span>
